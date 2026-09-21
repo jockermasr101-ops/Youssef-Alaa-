@@ -524,6 +524,7 @@ function initLogout() {
 
 async function registerStudentDevice(appUser) {
   if (!appUser || appUser.role !== 'student' || !auth.currentUser) return true;
+
   try {
     let deviceId = localStorage.getItem('ysa_device_id');
     if (!deviceId) {
@@ -534,40 +535,60 @@ async function registerStudentDevice(appUser) {
     const uid = auth.currentUser.uid;
     const storedSlot = Number(localStorage.getItem('ysa_device_slot') || 0);
     const slots = [1, 2];
-    const preferred = storedSlot >= 1 && storedSlot <= 2 ? [storedSlot, ...slots.filter(x => x !== storedSlot)] : slots;
+    const preferred = storedSlot >= 1 && storedSlot <= 2
+      ? [storedSlot, ...slots.filter(x => x !== storedSlot)]
+      : slots;
 
-    for (const slot of preferred) {
-      const ref = doc(db, 'deviceSessions', `${uid}_${slot}`);
-      const snap = await getDoc(ref);
+    const slot = await runTransaction(db, async (tx) => {
+      const refs = {
+        1: doc(db, 'deviceSessions', `${uid}_1`),
+        2: doc(db, 'deviceSessions', `${uid}_2`)
+      };
+      const snaps = {
+        1: await tx.get(refs[1]),
+        2: await tx.get(refs[2])
+      };
 
-      if (snap.exists()) {
-        const existing = snap.data();
-        if (existing.uid === uid && existing.deviceId === deviceId) {
-          await updateDoc(ref, { lastSeenAt: serverTimestamp(), userAgent: navigator.userAgent.slice(0, 180) });
-          localStorage.setItem('ysa_device_slot', String(slot));
-          return true;
+      for (const candidate of preferred) {
+        const snap = snaps[candidate];
+        const ref = refs[candidate];
+
+        if (snap.exists()) {
+          const existing = snap.data();
+          if (existing.uid === uid && existing.deviceId === deviceId) {
+            tx.update(ref, {
+              lastSeenAt: serverTimestamp(),
+              userAgent: navigator.userAgent.slice(0, 180)
+            });
+            return candidate;
+          }
+          continue;
         }
-        continue;
+
+        tx.set(ref, {
+          uid,
+          deviceId,
+          slot: candidate,
+          userAgent: navigator.userAgent.slice(0, 180),
+          label: navigator.userAgent.slice(0, 120),
+          createdAt: serverTimestamp(),
+          lastSeenAt: serverTimestamp()
+        });
+        return candidate;
       }
 
-      await setDoc(ref, {
-        uid,
-        deviceId,
-        slot,
-        userAgent: navigator.userAgent.slice(0, 180),
-        label: navigator.userAgent.slice(0, 120),
-        createdAt: serverTimestamp(),
-        lastSeenAt: serverTimestamp()
-      });
-      localStorage.setItem('ysa_device_slot', String(slot));
-      return true;
-    }
+      throw new Error('DEVICE_LIMIT');
+    });
 
-    await signOut(auth);
-    messageBox('هذا الحساب مسجل بالفعل على جهازين. ألغِ أحد الأجهزة من الإدارة قبل تسجيل جهاز جديد.');
-    setTimeout(() => go('login.html'), 900);
-    return false;
+    localStorage.setItem('ysa_device_slot', String(slot));
+    return true;
   } catch (e) {
+    if (e?.message === 'DEVICE_LIMIT') {
+      await signOut(auth);
+      messageBox('هذا الحساب مسجل بالفعل على جهازين. ألغِ أحد الأجهزة من الإدارة قبل تسجيل جهاز جديد.');
+      setTimeout(() => go('login.html'), 900);
+      return false;
+    }
     console.warn('device registration', e);
     messageBox('تعذر تسجيل الجهاز الآن. حاول مرة أخرى.');
     return false;

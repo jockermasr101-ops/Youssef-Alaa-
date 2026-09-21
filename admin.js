@@ -87,7 +87,7 @@ window.addEventListener('youssef-auth-ready', async (event) => {
     const form=$('#promo-form'); if(!form)return;
     form.addEventListener('submit',async e=>{e.preventDefault();
       const code=$('#promo-code').value.trim().toUpperCase(); const type=$('#promo-type').value; const value=Number($('#promo-value').value); const targetId=$('#promo-course').value.trim();
-      if(code.length<6 || !/^[A-Z0-9-]+$/.test(code)) return P.messageBox('الكود يجب أن يكون 6 أحرف/أرقام على الأقل.'); if(['lesson','course','subscription'].includes(type) && !targetId) return P.messageBox('اكتب معرّف الكورس أو الدرس المستهدف.');
+      if(code.length<6 || !/^[A-Z0-9-]+$/.test(code)) return P.messageBox('الكود يجب أن يكون 6 أحرف/أرقام على الأقل.'); if(value<0 || (type==='discount' && value>100)) return P.messageBox(type==='discount'?'نسبة الخصم يجب أن تكون بين 0 و100%.':'قيمة الكود غير صحيحة.'); if(['lesson','course','subscription'].includes(type) && !targetId) return P.messageBox('اكتب معرّف الكورس أو الدرس المستهدف.');
       try{await P.setDoc(P.doc(P.db,'promoCodes',code),{code,type,value,targetId:targetId||null,courseId:['course','subscription'].includes(type)?(targetId||null):null,active:true,createdByUid:P.auth.currentUser.uid,createdByRole:appUser.role,createdAt:P.serverTimestamp(),usedByUid:null}); P.messageBox('تم إنشاء الكود.','success');form.reset();loadPromos();}catch(err){P.messageBox(err.message||'تعذر إنشاء الكود.')}
     });
   }

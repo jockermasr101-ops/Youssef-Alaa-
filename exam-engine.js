@@ -236,6 +236,7 @@ window.addEventListener('youssef-auth-ready', async (e) => {
       P.messageBox(err.message || 'تعذر حفظ المحاولة.');
       submitting=false;
     }
+    submitting=false;
   }
 
   $('#prev-btn')?.addEventListener('click',()=>{if(index>0){index--;render();}});

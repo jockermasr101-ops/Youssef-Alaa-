@@ -68,7 +68,7 @@
 <div class="pr-space-md pl-space-xs text-on-surface-variant flex items-center justify-center">
 <span class="material-symbols-outlined text-[22px] text-primary">pin</span>
 </div>
-<input autocapitalize="characters" autocomplete="off" class="w-full py-3.5 px-space-xs bg-transparent text-left font-mono font-bold text-[18px] sm:text-[20px] text-on-surface placeholder:text-outline-variant placeholder:font-body-sm focus:outline-none tracking-widest selection:bg-primary-fixed" dir="ltr" id="course-code" maxlength="14" oninput="handleCodeInput(this)" placeholder="YS25-8842-9901" spellcheck="false" type="text"/>
+<input autocapitalize="characters" autocomplete="off" class="w-full py-3.5 px-space-xs bg-transparent text-left font-mono font-bold text-[18px] sm:text-[20px] text-on-surface placeholder:text-outline-variant placeholder:font-body-sm focus:outline-none tracking-widest selection:bg-primary-fixed" dir="ltr" id="course-code" maxlength="32" oninput="handleCodeInput(this)" placeholder="YS25-8842-9901" spellcheck="false" type="text"/>
 <button aria-label="مسح الكود" class="hidden pl-space-md pr-space-xs text-on-surface-variant hover:text-error transition-colors" id="clear-input-btn" onclick="clearCodeInput()" type="button">
 <span class="material-symbols-outlined text-[20px]">cancel</span>
 </button>
@@ -181,10 +181,37 @@
 </div>
 <!-- Interactive Client-side Script -->
 <script>
-window.addEventListener('youssef-auth-ready', () => {
+window.addEventListener('youssef-auth-ready', (e) => {
   const P = window.YoussefAlaaPlatform;
   const u = e.detail?.appUser || {};
   if (!P) return;
+
+  window.handleCodeInput = function (input) {
+    if (!input) return;
+    input.value = String(input.value || '').replace(/\s+/g, '').toUpperCase();
+    const clear = document.getElementById('clear-input-btn');
+    clear?.classList.toggle('hidden', !input.value);
+  };
+
+  window.clearCodeInput = function () {
+    const input = document.getElementById('course-code');
+    if (input) input.value = '';
+    document.getElementById('clear-input-btn')?.classList.add('hidden');
+    document.getElementById('status-box')?.classList.add('hidden');
+  };
+
+  window.pasteFromClipboard = async function () {
+    try {
+      const value = await navigator.clipboard.readText();
+      const input = document.getElementById('course-code');
+      if (input) {
+        input.value = String(value || '').replace(/\s+/g, '').toUpperCase().slice(0, 32);
+        window.handleCodeInput(input);
+      }
+    } catch (_) {
+      P.messageBox('تعذر الوصول إلى الحافظة. الصق الكود يدويًا.');
+    }
+  };
 
   window.activateCode = async function () {
     const input = document.getElementById('course-code');
@@ -192,9 +219,9 @@ window.addEventListener('youssef-auth-ready', () => {
     const btnText = document.getElementById('btn-text');
     const btnIcon = document.getElementById('btn-icon');
     const statusBox = document.getElementById('status-box');
-    const clean = String(input?.value || '').replace(/-/g, '').trim().toUpperCase();
+    const clean = String(input?.value || '').replace(/\s+/g, '').trim().toUpperCase();
 
-    if (!clean || clean.length < 6) {
+    if (!clean || clean.length < 6 || clean.length > 32) {
       statusBox.className = 'flex items-center gap-2 p-space-md rounded-xl bg-error-container text-on-error-container';
       statusBox.innerHTML = '<span>اكتب كودًا صحيحًا.</span>';
       return;

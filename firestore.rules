@@ -35,38 +35,35 @@ service cloud.firestore {
       return roleIs('student');
     }
 
-    function ownExisting(field) {
-      return signedIn() && resource.data[field] == request.auth.uid;
-    }
-
-    function ownNew(field) {
-      return signedIn() && request.resource.data[field] == request.auth.uid;
-    }
-
     function enrolled(courseId) {
       return signedIn() &&
         exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId)) &&
         get(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId)).data.active == true;
     }
 
+    function directLessonAccess(lessonId) {
+      return signedIn() &&
+        lessonId is string &&
+        exists(/databases/$(database)/documents/lessonAccess/$(request.auth.uid + '_' + lessonId)) &&
+        get(/databases/$(database)/documents/lessonAccess/$(request.auth.uid + '_' + lessonId)).data.active == true;
+    }
+
     match /users/{userId} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
 
-      allow create: if isAdmin() ||
-        (signedIn() &&
-         request.auth.uid == userId &&
-         (
-           (request.resource.data.role == 'student' &&
-            request.resource.data.status == 'pending') ||
-           (request.resource.data.role == 'teacher' &&
-            request.resource.data.status == 'pending')
-         ));
+      allow create: if signedIn() &&
+        request.auth.uid == userId &&
+        (
+          (request.resource.data.role == 'student' && request.resource.data.status == 'pending') ||
+          (request.resource.data.role == 'teacher' && request.resource.data.status == 'pending')
+        );
 
       allow update: if isOwner() ||
-        (isAdmin() &&
-         resource.data.role != 'owner' &&
-         request.resource.data.role != 'admin' &&
-         request.resource.data.role != 'owner') ||
+        (
+          isAdmin() &&
+          resource.data.role != 'owner' &&
+          request.resource.data.role == resource.data.role
+        ) ||
         (
           signedIn() &&
           request.auth.uid == userId &&
@@ -76,22 +73,21 @@ service cloud.firestore {
           (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'displayName',
-              'email',
               'studentPhone',
               'parentPhone',
               'parentPhone2',
               'school',
               'governorate',
               'city',
-              'updatedAt',
               'bio',
-              'avatarUrl'
+              'avatarUrl',
+              'updatedAt'
             ]) ||
             (
               resource.data.role == 'student' &&
               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points','updatedAt']) &&
               request.resource.data.points >= resource.data.points &&
-              request.resource.data.points <= resource.data.points + 100
+              request.resource.data.points <= resource.data.points + 1000
             )
           )
         );
@@ -100,139 +96,175 @@ service cloud.firestore {
     }
 
     match /courses/{courseId} {
-      allow read: if isAdmin() ||
-        (isTeacher() && resource.data.teacherId == request.auth.uid) ||
-        resource.data.published == true;
+      allow read: if resource.data.published == true ||
+        (isAdmin()) ||
+        (isTeacher() && resource.data.teacherId == request.auth.uid);
 
       allow create: if isAdmin() ||
-        (isTeacher() &&
-         request.resource.data.teacherId == request.auth.uid &&
-         request.resource.data.published == false &&
-         request.resource.data.status == 'pending' &&
-         exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+        (
+          isTeacher() &&
+          request.resource.data.teacherId == request.auth.uid &&
+          request.resource.data.published == false &&
+          request.resource.data.status == 'pending' &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        );
 
       allow update: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         request.resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false &&
-         request.resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          request.resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false &&
+          request.resource.data.published == false
+        );
 
       allow delete: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false
+        );
     }
 
     match /lessons/{lessonId} {
       allow read: if isAdmin() ||
         (isTeacher() && resource.data.teacherId == request.auth.uid) ||
-        (resource.data.published == true && enrolled(resource.data.courseId));
+        (
+          resource.data.published == true &&
+          (
+            enrolled(resource.data.courseId) ||
+            directLessonAccess(resource.data.lessonId)
+          )
+        );
 
       allow create: if isAdmin() ||
-        (isTeacher() &&
-         request.resource.data.teacherId == request.auth.uid &&
-         request.resource.data.published == false &&
-         request.resource.data.status == 'pending' &&
-         exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
-         get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId == request.auth.uid);
+        (
+          isTeacher() &&
+          request.resource.data.teacherId == request.auth.uid &&
+          request.resource.data.published == false &&
+          request.resource.data.status == 'pending' &&
+          exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
+          get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId == request.auth.uid
+        );
 
       allow update: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         request.resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false &&
-         request.resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          request.resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false &&
+          request.resource.data.published == false
+        );
 
       allow delete: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false
+        );
     }
 
     match /enrollments/{enrollmentId} {
       allow read: if isAdmin() ||
-        (signedIn() &&
-         (resource.data.studentUid == request.auth.uid ||
-          resource.data.teacherId == request.auth.uid));
+        (
+          signedIn() &&
+          (
+            resource.data.studentUid == request.auth.uid ||
+            resource.data.teacherId == request.auth.uid
+          )
+        );
 
       allow create: if isAdmin() ||
-        (isStudent() &&
-         request.resource.data.studentUid == request.auth.uid &&
-         request.resource.data.active == true &&
-         request.resource.data.source in ['promo', 'promo_subscription'] &&
-         request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId &&
-         request.resource.data.promoCode is string &&
-         request.resource.data.promoCode.size() > 0 &&
-         existsAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)) &&
-         getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.studentUid == request.auth.uid &&
-         getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.type in ['course', 'subscription'] &&
-         getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.courseId == request.resource.data.courseId);
+        (
+          isStudent() &&
+          request.resource.data.studentUid == request.auth.uid &&
+          request.resource.data.active == true &&
+          request.resource.data.source in ['promo', 'promo_subscription'] &&
+          request.resource.data.promoCode is string &&
+          request.resource.data.promoCode.size() > 0 &&
+          request.resource.data.courseId is string &&
+          exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
+          existsAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.studentUid == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.type in ['course', 'subscription'] &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.courseId == request.resource.data.courseId
+        );
 
       allow update: if isAdmin();
-
       allow delete: if isOwner();
-    }
-
-    match /teacherUploads/{uploadId} {
-      allow read: if isAdmin() || ownExisting('ownerUid');
-      allow create: if isTeacher() && ownNew('ownerUid');
-      allow update, delete: if isAdmin() || ownExisting('ownerUid');
     }
 
     match /exams/{examId} {
       allow read: if isAdmin() ||
         (isTeacher() && resource.data.teacherId == request.auth.uid) ||
-        (isStudent() && resource.data.published == true && enrolled(resource.data.courseId));
+        (
+          isStudent() &&
+          resource.data.published == true &&
+          enrolled(resource.data.courseId)
+        );
 
       allow create: if isAdmin() ||
-        (isTeacher() &&
-         request.resource.data.teacherId == request.auth.uid &&
-         request.resource.data.published == false &&
-         request.resource.data.status == 'pending' &&
-         exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
-         get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId == request.auth.uid);
+        (
+          isTeacher() &&
+          request.resource.data.teacherId == request.auth.uid &&
+          request.resource.data.published == false &&
+          request.resource.data.status == 'pending' &&
+          exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
+          get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId == request.auth.uid
+        );
 
       allow update: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         request.resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false &&
-         request.resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          request.resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false &&
+          request.resource.data.published == false
+        );
 
       allow delete: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false
+        );
     }
 
     match /questions/{questionId} {
       allow read: if isAdmin() ||
         (isTeacher() && resource.data.teacherId == request.auth.uid) ||
-        (isStudent() &&
-         resource.data.published == true &&
-         exists(/databases/$(database)/documents/exams/$(resource.data.examId)) &&
-         get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.published == true &&
-         enrolled(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.courseId));
+        (
+          isStudent() &&
+          resource.data.published == true &&
+          exists(/databases/$(database)/documents/exams/$(resource.data.examId)) &&
+          get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.published == true &&
+          enrolled(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.courseId)
+        );
 
       allow create: if isAdmin() ||
-        (isTeacher() &&
-         request.resource.data.teacherId == request.auth.uid &&
-         request.resource.data.published == false &&
-         exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)) &&
-         get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.teacherId == request.auth.uid);
+        (
+          isTeacher() &&
+          request.resource.data.teacherId == request.auth.uid &&
+          request.resource.data.published == false &&
+          exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)) &&
+          get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.teacherId == request.auth.uid
+        );
 
       allow update: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         request.resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false &&
-         request.resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          request.resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false &&
+          request.resource.data.published == false
+        );
 
       allow delete: if isAdmin() ||
-        (isTeacher() &&
-         resource.data.teacherId == request.auth.uid &&
-         resource.data.published == false);
+        (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid &&
+          resource.data.published == false
+        );
     }
 
     match /examAttempts/{attemptId} {
@@ -246,62 +278,53 @@ service cloud.firestore {
         request.resource.data.attemptNumber is int &&
         request.resource.data.attemptNumber >= 1 &&
         request.resource.data.attemptNumber <= 3 &&
-        request.resource.data.attemptNumber <= get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.attemptsAllowed &&
-        attemptId == request.auth.uid + '_' + request.resource.data.examId + '_' + string(request.resource.data.attemptNumber) &&
         exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)) &&
         get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.published == true &&
+        request.resource.data.attemptNumber <= get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.attemptsAllowed &&
         enrolled(get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.courseId);
 
       allow update: if isAdmin() ||
         (isTeacher() && resource.data.teacherId == request.auth.uid);
-
       allow delete: if isOwner();
     }
 
     match /promoCodes/{codeId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.createdByUid == request.auth.uid) || (isStudent() && resource.data.active == true);
+      allow read: if isAdmin() ||
+        (isTeacher() && resource.data.createdByUid == request.auth.uid) ||
+        (isStudent() && resource.data.active == true);
 
       allow create: if isAdmin() ||
-        (isTeacher() &&
-         request.resource.data.createdByUid == request.auth.uid &&
-         request.resource.data.active == true &&
-         request.resource.data.usedByUid == null &&
-         (
-           (
-             request.resource.data.type in ['course', 'subscription'] &&
-             request.resource.data.targetId is string &&
-             exists(/databases/$(database)/documents/courses/$(request.resource.data.targetId)) &&
-             get(/databases/$(database)/documents/courses/$(request.resource.data.targetId)).data.teacherId == request.auth.uid
-           ) ||
-           (
-             request.resource.data.type == 'lesson' &&
-             request.resource.data.targetId is string &&
-             exists(/databases/$(database)/documents/lessons/$(request.resource.data.targetId)) &&
-             get(/databases/$(database)/documents/lessons/$(request.resource.data.targetId)).data.teacherId == request.auth.uid
-           ) ||
-           request.resource.data.type == 'discount'
-         ));
+        (
+          isTeacher() &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          request.resource.data.active == true &&
+          request.resource.data.usedByUid == null &&
+          request.resource.data.type in ['lesson', 'course', 'subscription', 'discount']
+        );
 
       allow update: if isAdmin() ||
-        (isStudent() &&
-         resource.data.active == true &&
-         request.resource.data.active == false &&
-         request.resource.data.usedByUid == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'usedByUid', 'usedAt']));
+        (
+          isStudent() &&
+          resource.data.active == true &&
+          request.resource.data.active == false &&
+          request.resource.data.usedByUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active','usedByUid','usedAt'])
+        );
 
       allow delete: if isOwner();
     }
 
     match /promoRedemptions/{redemptionId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.studentUid == request.auth.uid);
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.studentUid == request.auth.uid);
 
       allow create: if isStudent() &&
         request.resource.data.studentUid == request.auth.uid &&
+        request.resource.data.code is string &&
         redemptionId == request.resource.data.code + '_' + request.auth.uid &&
         existsAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)) &&
         getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.active == false &&
-        getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.usedByUid == request.auth.uid &&
-        request.resource.data.type == getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.type;
+        getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.usedByUid == request.auth.uid;
 
       allow update, delete: if isAdmin();
     }
@@ -311,18 +334,19 @@ service cloud.firestore {
       allow create, update: if isStudent() &&
         request.auth.uid == userId &&
         request.resource.data.uid == request.auth.uid &&
-        request.resource.data.points == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.points &&
         request.resource.data.points >= 0;
       allow delete: if isAdmin();
     }
 
     match /transactions/{transactionId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow read: if isAdmin() ||
+        (isTeacher() && resource.data.teacherId == request.auth.uid);
       allow create, update, delete: if isAdmin();
     }
 
     match /withdrawalRequests/{requestId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow read: if isAdmin() ||
+        (isTeacher() && resource.data.teacherId == request.auth.uid);
       allow create: if isTeacher() &&
         request.resource.data.teacherId == request.auth.uid &&
         request.resource.data.status == 'pending';
@@ -334,10 +358,12 @@ service cloud.firestore {
       allow create: if isAdmin() ||
         (isTeacher() && request.resource.data.teacherId == request.auth.uid);
       allow update: if isAdmin() ||
-        (signedIn() &&
-         resource.data.userId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read','updatedAt']) &&
-         request.resource.data.userId == resource.data.userId);
+        (
+          signedIn() &&
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read','updatedAt'])
+        );
       allow delete: if isAdmin();
     }
 
@@ -347,7 +373,7 @@ service cloud.firestore {
     }
 
     match /deviceSessions/{deviceId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (isStudent() && resource.data.uid == request.auth.uid);
 
       allow create: if isStudent() &&
         request.resource.data.uid == request.auth.uid &&
@@ -355,11 +381,13 @@ service cloud.firestore {
         request.resource.data.slot in [1, 2];
 
       allow update: if isAdmin() ||
-        (isStudent() &&
-         resource.data.uid == request.auth.uid &&
-         request.resource.data.uid == request.auth.uid &&
-         request.resource.data.deviceId == resource.data.deviceId &&
-         request.resource.data.slot == resource.data.slot);
+        (
+          isStudent() &&
+          resource.data.uid == request.auth.uid &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.deviceId == resource.data.deviceId &&
+          request.resource.data.slot == resource.data.slot
+        );
 
       allow delete: if isAdmin();
     }
@@ -373,12 +401,17 @@ service cloud.firestore {
       allow read: if isAdmin() || (isStudent() && resource.data.studentUid == request.auth.uid);
 
       allow create: if isAdmin() ||
-        (isStudent() &&
-         request.resource.data.studentUid == request.auth.uid &&
-         request.resource.data.source == 'promo' &&
-         existsAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)) &&
-         getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.type == 'lesson' &&
-         getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.lessonId == request.resource.data.lessonId);
+        (
+          isStudent() &&
+          request.resource.data.studentUid == request.auth.uid &&
+          request.resource.data.source == 'promo' &&
+          request.resource.data.lessonId is string &&
+          request.resource.data.promoCode is string &&
+          existsAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.studentUid == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.type == 'lesson' &&
+          getAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)).data.lessonId == request.resource.data.lessonId
+        );
 
       allow update, delete: if isAdmin();
     }
@@ -397,7 +430,9 @@ service cloud.firestore {
     }
 
     match /sessions/{sessionId} {
-      allow read: if isAdmin() || (isStudent() && resource.data.published == true) || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow read: if isAdmin() ||
+        (isStudent() && resource.data.published == true) ||
+        (isTeacher() && resource.data.teacherId == request.auth.uid);
       allow create: if isAdmin() ||
         (isTeacher() && request.resource.data.teacherId == request.auth.uid && request.resource.data.published == false);
       allow update, delete: if isAdmin() ||
@@ -407,13 +442,17 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
 
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'open';
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'open';
 
       allow update: if isAdmin() ||
-        (signedIn() &&
-         resource.data.userId == request.auth.uid &&
-         request.resource.data.userId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subject','message','updatedAt']));
+        (
+          signedIn() &&
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subject','message','updatedAt'])
+        );
 
       allow delete: if isAdmin();
     }
@@ -421,8 +460,7 @@ service cloud.firestore {
     match /referrals/{referralId} {
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {

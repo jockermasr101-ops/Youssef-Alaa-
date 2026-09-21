@@ -1,41 +1,37 @@
-# منصة يوسف علاء التعليمية — Cloudflare Ready
+# منصة يوسف علاء التعليمية — GitHub / Cloudflare Ready
 
-هذه نسخة Static بدون npm/Node build، مبنية على أكواد Stitch الأصلية مع تحويل جزء كبير منها إلى وظائف حقيقية عبر Firebase وCloudinary.
+نسخة Static جاهزة للنشر على Cloudflare Pages، وتستخدم Firebase وCloudinary من الواجهة مباشرة.
 
-## ما تم ربطه الآن
-- Firebase Authentication: تسجيل/دخول بالبريد وكلمة المرور، استرجاع كلمة المرور، أدوار وصلاحيات.
-- Firestore: users, courses, lessons, enrollments, exams, questions, examAttempts, promoCodes, promoRedemptions, transactions, withdrawalRequests, notifications, activityLogs, deviceSessions, supportTickets, referrals, lessonProgress, paymentSubmissions.
-- Cloudinary: صور الهوية، الصور، الفيديوهات، PDF/Word والملفات والوثائق وإيصالات الدفع باستخدام Upload Preset.
-- Cloudflare Pages: نشر مباشر بدون build.
+## الموجود في النسخة
 
-## الصفحات الإضافية
-- إدارة الطلاب: admin-users.html
-- إدارة المدرسين: admin-teachers.html
-- إدارة المحتوى: admin-content.html
-- إدارة المدفوعات: admin-payments.html
-- المالية والسحب: admin-finance.html
-- الأكواد: admin-promo.html و teacher-promo.html
-- الأمان والسجل: admin-security.html
-- كورسات المدرس: teacher-courses.html
-- بنك الأسئلة والامتحانات: teacher-question-bank.html
-- طلاب المدرس: teacher-students.html
+- تسجيل الطلاب ومراجعة الحسابات يدويًا.
+- أدوار الطالب والمدرس والمساعد والمدير والمالك.
+- إدارة الكورسات والدروس والامتحانات والأسئلة مع مسار مراجعة قبل النشر.
+- رفع الفيديوهات والصور وملفات PDF/Word وملفات الامتحانات إلى Cloudinary عبر Upload Preset.
+- سلة متعددة الكورسات والدفع اليدوي وإيصالات التحويل.
+- احتساب عمولة المدرس من النسبة المخزنة في حسابه، والمحفظة وطلبات السحب.
+- أكواد درس/كورس/اشتراك/خصم، مع استخدام أحادي للكود.
+- تتبع مشاهدة الفيديو، الاستكمال من آخر موضع، السرعات، الفصول، الملاحظات، والعلامة المائية المتحركة.
+- امتحانات بأنواع متعددة، ثلاث محاولات كحد أقصى، عشوائية الأسئلة والاختيارات، وتصحيح يدوي للأسئلة المقالية وملفات الإجابة.
+- لوحة متفوقين وتقارير أداء مبنية على البيانات الفعلية.
+- لا توجد حسابات طلاب أو مدرسين أو إحصائيات تجريبية مزروعة داخل المشروع.
 
-## Cloudinary
-Cloud Name: gf27ad64
-Upload Preset: e112csfr
-لا تضع API Secret أو أي Service Account داخل الموقع.
+## إعداد Firebase
+
+الملف config.js يحتوي على إعدادات الويب المطلوبة للمشروع. لا تضع API Secret أو Service Account داخل الموقع.
 
 ## أول Owner
-أنشئ حساب المالك أولًا من Firebase Authentication ثم أنشئ مستندًا في Firestore:
-users/{UID}
-واجعله role=owner وstatus=active. لا توجد طريقة آمنة داخل الواجهة تمنح نفسها دور Owner.
+
+أنشئ حساب المالك من Firebase Authentication ثم أنشئ مستند users/{UID} واجعله role = owner وstatus = active.
 
 ## Cloudflare Pages
-لا يوجد Build Command. ارفع المجلد كما هو، أو اربطه بالمستودع مع Framework preset=None.
 
-## ملاحظات مهمة قبل Production
-- Free tiers لها حصص وليست غير محدودة.
-- SMS OTP ليس جزءًا من خطة الصفر الحالية؛ تسجيل البريد/كلمة المرور مستخدم الآن.
-- رفع وتشغيل الفيديو من Cloudinary يعمل في النسخة الحالية، لكن سياسة منع مشاركة الشاشة/التسجيل لا يمكن ضمانها بالكامل من المتصفح وحده.
-- تصحيح الامتحان الآلي موجود للأنواع الموضوعية، بينما essay/file تُسجل للتصحيح اليدوي. إخفاء الإجابات الصحيحة عن عميل متصفح متحكم فيه بالكامل يحتاج Backend موثوق/وظائف خادمية قبل اعتبار الاختبارات عالية المخاطر Production.
-- حد الأجهزة يُمكن مراقبته من deviceSessions، لكنه يحتاج Backend/Rules إضافية إذا أردنا إنفاذًا صارمًا ضد عميل متلاعب.
+المشروع Static ولا يحتاج Build Command.
+
+## ملاحظات
+
+- تسجيل الدخول في الواجهة يعتمد البريد الإلكتروني وكلمة المرور.
+- SMS OTP ليس جزءًا من النسخة المجانية الحالية.
+- منع تصوير الشاشة أو التسجيل من المتصفح ليس حماية مطلقة.
+- تصحيح الإجابات الموضوعية موجود داخل العميل، ولذلك الحماية القصوى لامتحانات عالية الحساسية تحتاج طبقة خادمية إضافية.
+- حدود الخدمات المجانية تعتمد على الحصص الخاصة بكل خدمة.

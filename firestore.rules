@@ -151,6 +151,7 @@ service cloud.firestore {
          request.resource.data.studentUid == request.auth.uid &&
          request.resource.data.active == true &&
          request.resource.data.source in ['promo', 'promo_subscription'] &&
+         request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId &&
          request.resource.data.promoCode is string &&
          request.resource.data.promoCode.size() > 0 &&
          existsAfter(/databases/$(database)/documents/promoRedemptions/$(request.resource.data.promoCode + '_' + request.auth.uid)) &&

@@ -281,7 +281,7 @@ service cloud.firestore {
 
       allow create: if isStudent() &&
         request.resource.data.studentUid == request.auth.uid &&
-        request.resource.data.code == redemptionId.split('_')[0] &&
+        redemptionId == request.resource.data.code + '_' + request.auth.uid &&
         existsAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)) &&
         getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.active == false &&
         getAfter(/databases/$(database)/documents/promoCodes/$(request.resource.data.code)).data.usedByUid == request.auth.uid &&
@@ -325,7 +325,7 @@ service cloud.firestore {
 
       allow create: if isStudent() &&
         request.resource.data.uid == request.auth.uid &&
-        deviceId == request.auth.uid + '_' + string(request.resource.data.slot) &&
+        (deviceId == request.auth.uid + '_1' || deviceId == request.auth.uid + '_2') &&
         request.resource.data.slot in [1, 2];
 
       allow update: if isAdmin() ||

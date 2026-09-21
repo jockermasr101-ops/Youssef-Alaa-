@@ -15,8 +15,14 @@ window.addEventListener('youssef-auth-ready', async (e) => {
 
   async function load() {
     try {
-      const s = await P.getDocs(P.query(P.collection(P.db,'exams'),P.where('published','==',true),P.limit(50)));
-      exams = s.docs.map(d=>({id:d.id,...d.data()}));
+      const en = await P.getDocs(P.query(P.collection(P.db,'enrollments'),P.where('studentUid','==',P.auth.currentUser.uid),P.limit(100)));
+      const courseIds=[...new Set(en.docs.map(d=>d.data()).filter(x=>x.active!==false).map(x=>x.courseId).filter(Boolean))];
+      const found=[];
+      for(const cid of courseIds){
+        const s=await P.getDocs(P.query(P.collection(P.db,'exams'),P.where('courseId','==',cid),P.where('published','==',true),P.limit(50)));
+        s.docs.forEach(d=>found.push({id:d.id,...d.data()}));
+      }
+      exams=found;
       const host = $('#exam-list');
       if (!host) return;
       host.innerHTML = exams.map(x =>

@@ -193,7 +193,18 @@ window.addEventListener('youssef-auth-ready', async (e) => {
 
       await P.addDoc(P.collection(P.db,'examAttempts'),attempt);
       if(score>0){
-        await P.updateDoc(P.doc(P.db,'users',P.auth.currentUser.uid),{points:P.increment(score),updatedAt:P.serverTimestamp()});
+        const userRef=P.doc(P.db,'users',P.auth.currentUser.uid);
+        const beforeUser=await P.getDoc(userRef);
+        const beforePoints=beforeUser.exists()?Number(beforeUser.data().points||0):0;
+        const nextPoints=beforePoints+score;
+        await P.updateDoc(userRef,{points:P.increment(score),updatedAt:P.serverTimestamp()});
+        const parts=String(u.displayName||'طالب').trim().split(/\s+/).filter(Boolean);
+        const leaderboardName=parts.length>=2?parts.slice(0,2).join(' '):parts.join(' ');
+        try{
+          await P.setDoc(P.doc(P.db,'leaderboard',P.auth.currentUser.uid),{
+            uid:P.auth.currentUser.uid,displayName:leaderboardName,points:nextPoints,grade:u.grade||'',track:u.track||'',updatedAt:P.serverTimestamp()
+          },{merge:true});
+        }catch(_){}
       }
       await P.logActivity('exam_submitted',{examId:selected.id,attemptNumber:attemptsUsed+1,percent});
 

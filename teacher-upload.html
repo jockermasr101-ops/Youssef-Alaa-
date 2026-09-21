@@ -39,7 +39,9 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         onProgress: p => { bar.style.width = p+'%'; st.textContent='جاري الرفع... '+p+'%'; }
       });
 
-      const lessonRef = await P.addDoc(P.collection(P.db,'lessons'), {
+      const lessonRef = P.doc(P.collection(P.db,'lessons'));
+      await P.setDoc(lessonRef, {
+        lessonId:lessonRef.id,
         title:document.querySelector('#lesson-title').value.trim(),
         description:document.querySelector('#lesson-description').value.trim(),
         courseId, order, mediaType:type, mediaUrl:up.secure_url, publicId:up.public_id,

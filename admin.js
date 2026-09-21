@@ -91,7 +91,7 @@ window.addEventListener('youssef-auth-ready', async (event) => {
       try{await P.setDoc(P.doc(P.db,'promoCodes',code),{code,type,value,targetId:targetId||null,courseId:['course','subscription'].includes(type)?(targetId||null):null,active:true,createdByUid:P.auth.currentUser.uid,createdByRole:appUser.role,createdAt:P.serverTimestamp(),usedByUid:null}); P.messageBox('تم إنشاء الكود.','success');form.reset();loadPromos();}catch(err){P.messageBox(err.message||'تعذر إنشاء الكود.')}
     });
   }
-  async function loadPromos(){const box=$('#promos-body');if(!box)return;try{const r=await getAll('promoCodes');box.innerHTML=r.map(x=>`<tr><td class="font-mono">${esc(x.code)}</td><td>${esc(x.type)}</td><td>${esc(x.targetId||x.courseId||'—')}</td><td>${fmt(x.value)}</td><td>${badge(x.active?'active':'suspended')}</td><td>${esc(x.usedByUid||'—')}</td><td>${date(x.createdAt)}</td></tr>`).join('')||`<tr><td colspan="6" class="platform-empty">لا توجد أكواد.</td></tr>`}catch(e){box.innerHTML='<tr><td colspan="6" class="platform-empty">تعذر تحميل الأكواد.</td></tr>'}}
+  async function loadPromos(){const box=$('#promos-body');if(!box)return;try{const r=await getAll('promoCodes');box.innerHTML=r.map(x=>`<tr><td class="font-mono">${esc(x.code)}</td><td>${esc(x.type)}</td><td>${esc(x.targetId||x.courseId||'—')}</td><td>${fmt(x.value)}</td><td>${badge(x.active?'active':'suspended')}</td><td>${esc(x.usedByUid||'—')}</td><td>${date(x.createdAt)}</td></tr>`).join('')||`<tr><td colspan="7" class="platform-empty">لا توجد أكواد.</td></tr>`}catch(e){box.innerHTML='<tr><td colspan="7" class="platform-empty">تعذر تحميل الأكواد.</td></tr>'}}
 
   async function loadExamsForApproval(){
     const box=$('#exams-approval-body'); if(!box)return;

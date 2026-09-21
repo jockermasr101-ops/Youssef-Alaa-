@@ -186,6 +186,33 @@ window.addEventListener('youssef-auth-ready', (e) => {
   const u = e.detail?.appUser || {};
   if (!P) return;
 
+  window.handleCodeInput = function (input) {
+    if (!input) return;
+    input.value = String(input.value || '').replace(/\s+/g, '').toUpperCase();
+    const clear = document.getElementById('clear-input-btn');
+    clear?.classList.toggle('hidden', !input.value);
+  };
+
+  window.clearCodeInput = function () {
+    const input = document.getElementById('course-code');
+    if (input) input.value = '';
+    document.getElementById('clear-input-btn')?.classList.add('hidden');
+    document.getElementById('status-box')?.classList.add('hidden');
+  };
+
+  window.pasteFromClipboard = async function () {
+    try {
+      const value = await navigator.clipboard.readText();
+      const input = document.getElementById('course-code');
+      if (input) {
+        input.value = String(value || '').replace(/\s+/g, '').toUpperCase().slice(0, 32);
+        window.handleCodeInput(input);
+      }
+    } catch (_) {
+      P.messageBox('تعذر الوصول إلى الحافظة. الصق الكود يدويًا.');
+    }
+  };
+
   window.activateCode = async function () {
     const input = document.getElementById('course-code');
     const btn = document.getElementById('submit-code-btn');

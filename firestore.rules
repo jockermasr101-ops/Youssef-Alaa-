@@ -298,6 +298,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /leaderboard/{userId} {
+      allow read: if signedIn();
+      allow create, update: if isStudent() &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.points == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.points &&
+        request.resource.data.points >= 0;
+      allow delete: if isAdmin();
+    }
+
     match /transactions/{transactionId} {
       allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
       allow create, update, delete: if isAdmin();

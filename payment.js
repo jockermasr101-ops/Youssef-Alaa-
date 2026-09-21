@@ -26,9 +26,43 @@ window.addEventListener('youssef-auth-ready', async (e) => {
     courseField.readOnly = true;
   }
 
-  if (rows.length && amountField && !Number(amountField.value)) {
-    amountField.value = String(rows.reduce((sum, x) => sum + Number(x.price || 0), 0));
+  const catalogTotal = rows.reduce((sum, x) => sum + Number(x.price || 0), 0);
+  if (rows.length && amountField && !Number(amountField.value)) amountField.value = String(catalogTotal);
+
+  const promoField = document.querySelector('#payment-promo-code');
+  const promoHint = document.createElement('small');
+  promoHint.id = 'payment-promo-hint';
+  promoHint.style.color = '#5b6072';
+  if (promoField) promoField.parentElement.append(promoHint);
+
+  async function previewDiscount() {
+    const code = String(promoField?.value || '').trim().toUpperCase();
+    if (!promoHint) return { code:'', discount:0, total:catalogTotal };
+    if (!code) {
+      promoHint.textContent = '';
+      if (amountField) amountField.value = String(catalogTotal);
+      return { code:'', discount:0, total:catalogTotal };
+    }
+    try {
+      const snap = await P.getDoc(P.doc(P.db,'promoCodes',code));
+      if (!snap.exists() || snap.data().active !== true || snap.data().type !== 'discount') {
+        promoHint.textContent = 'كود الخصم غير موجود أو غير فعال.';
+        if (amountField) amountField.value = String(catalogTotal);
+        return { code, discount:0, total:catalogTotal };
+      }
+      const percent = Math.max(0, Math.min(100, Number(snap.data().value || 0)));
+      const discount = Math.round(catalogTotal * percent) / 100;
+      const total = Math.max(0, catalogTotal - discount);
+      promoHint.textContent = 'خصم '+percent+'% = '+money(discount)+' ج.م • المطلوب دفعه '+money(total)+' ج.م';
+      if (amountField) amountField.value = String(total);
+      return { code, discount, total, percent };
+    } catch (_) {
+      promoHint.textContent = 'تعذر التحقق من كود الخصم الآن.';
+      return { code, discount:0, total:catalogTotal };
+    }
   }
+  promoField?.addEventListener('change', previewDiscount);
+  promoField?.addEventListener('blur', previewDiscount);
 
   let summary = document.querySelector('#payment-order-summary');
   if (!summary) {
@@ -68,8 +102,10 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         folder: 'youssef-alaa-academy/payments'
       });
 
+      const promo = await previewDiscount();
       const amount = Number(document.querySelector('#payment-amount')?.value || 0);
       if (amount <= 0) throw new Error('اكتب مبلغ الدفع الصحيح.');
+      if (promo.code && !promo.percent) throw new Error('كود الخصم غير صالح أو غير فعال.');
 
       const items = rows.map(x => ({
         courseId: x.id,
@@ -85,6 +121,10 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         courseIds: rows.map(x => x.id),
         items,
         amount,
+        catalogTotal,
+        discountAmount:Number(promo.discount||0),
+        promoCode:promo.code||null,
+        promoPercent:Number(promo.percent||0),
         method: document.querySelector('#payment-method')?.value || '',
         reference: document.querySelector('#payment-reference')?.value.trim() || '',
         receiptUrl: upload.secure_url,

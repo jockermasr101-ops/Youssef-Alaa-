@@ -390,13 +390,8 @@ async function bindAuthForms() {
       try {
         let identifier = document.getElementById('login-identifier')?.value.trim() || '';
         const password = document.getElementById('login-password')?.value || '';
-        if (!identifier || !password) throw new Error('اكتب بيانات الدخول كاملة.');
-        if (!identifier.includes('@')) {
-          const q = query(collection(db, 'users'), where('studentPhone', '==', normalizePhone(identifier)), limit(1));
-          const snap = await getDocs(q);
-          if (snap.empty) throw new Error('لم نجد حسابًا مرتبطًا برقم الهاتف. استخدم البريد الإلكتروني.');
-          identifier = snap.docs[0].data().email;
-        }
+        if (!identifier || !password) throw new Error('اكتب البريد الإلكتروني وكلمة المرور.');
+        if (!identifier.includes('@')) throw new Error('استخدم البريد الإلكتروني لتسجيل الدخول.');
         const cred = await signInWithEmailAndPassword(auth, identifier, password);
         const user = await getAppUser(cred.user);
         if (!user) throw new Error('تم تسجيل الدخول، لكن بيانات الحساب غير مكتملة. تواصل مع الإدارة.');

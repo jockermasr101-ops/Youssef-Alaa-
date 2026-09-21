@@ -210,6 +210,13 @@ window.addEventListener('youssef-auth-ready', () => {
       const codeRef = P.doc(P.db, 'promoCodes', clean);
       const redemptionId = clean + '_' + uid;
       const redemptionRef = P.doc(P.db, 'promoRedemptions', redemptionId);
+      let targetTeacherId = null;
+      const quickType = String((await P.getDoc(codeRef)).data()?.type || '').toLowerCase();
+      const quickTarget = String((await P.getDoc(codeRef)).data()?.targetId || (await P.getDoc(codeRef)).data()?.courseId || '').trim();
+      if (['course','subscription'].includes(quickType) && quickTarget) {
+        const courseSnap = await P.getDoc(P.doc(P.db,'courses',quickTarget));
+        if (courseSnap.exists()) targetTeacherId = courseSnap.data().teacherId || null;
+      }
 
       await P.runTransaction(P.db, async (tx) => {
         const codeSnap = await tx.get(codeRef);
@@ -255,7 +262,7 @@ window.addEventListener('youssef-auth-ready', () => {
             studentPhone: u.studentPhone || '',
             studentGrade: u.grade || '',
             studentTrack: u.track || '',
-            teacherId: null,
+            teacherId: targetTeacherId,
             courseId: targetId,
             source: type === 'subscription' ? 'promo_subscription' : 'promo',
             promoCode: clean,

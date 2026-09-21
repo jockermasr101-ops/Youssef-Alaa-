@@ -227,6 +227,7 @@ window.addEventListener('youssef-auth-ready', () => {
 
         if (code.active !== true) throw new Error('الكود مستخدم أو غير فعال.');
         const type = String(code.type || '').toLowerCase();
+        if (type === 'discount') throw new Error('كود الخصم يُستخدم من صفحة الدفع وليس من صفحة تفعيل الكود.');
         const targetId = String(code.targetId || code.courseId || '').trim();
 
         if (!['lesson', 'course', 'subscription', 'discount'].includes(type)) {

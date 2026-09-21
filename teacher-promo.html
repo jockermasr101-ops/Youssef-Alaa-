@@ -24,6 +24,7 @@ window.addEventListener('youssef-auth-ready', async (e) => {
     const value = Number(document.querySelector('#tp-value').value || 0);
     const targetId = document.querySelector('#tp-target').value.trim();
     if (!/^[A-Z0-9-]{6,32}$/.test(code)) return P.messageBox('صيغة الكود غير صحيحة.');
+    if (value < 0 || (type === 'discount' && value > 100)) return P.messageBox(type === 'discount' ? 'نسبة الخصم يجب أن تكون بين 0 و100%.' : 'قيمة الكود غير صحيحة.');
     if (['lesson','course','subscription'].includes(type) && !targetId) return P.messageBox('اكتب معرّف الكورس أو الدرس المستهدف.');
     try {
       await P.setDoc(P.doc(P.db,'promoCodes',code), {

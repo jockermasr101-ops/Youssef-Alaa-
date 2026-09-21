@@ -1,1 +1,42 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>أكواد المدرس — منصة يوسف علاء</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/platform.css"></head><body data-protected="teacher"><header class="app-header"><div><div class="brand-title">منصة يوسف علاء التعليمية</div><div class="brand-subtitle">إنشاء الأكواد للطلاب</div></div><div class="header-actions"><a href="/teacher-dashboard.html" class="platform-btn">لوحة المدرس</a><button data-logout class="platform-btn danger">خروج</button></div></header><main class="app-main"><div class="page-title"><h1>أكواد المدرس</h1><p>أكواد أحادية الاستخدام مع سجل واضح للمنشئ والاستخدام.</p></div><section class="platform-panel"><form id="teacher-promo-form" class="platform-grid platform-grid-3"><div><label class="platform-label">الكود</label><input id="tp-code" class="platform-input" required placeholder="YS-2026-XXXX"></div><div><label class="platform-label">النوع</label><select id="tp-type" class="platform-select"><option value="lesson">درس</option><option value="course">كورس</option><option value="discount">خصم</option></select></div><div><label class="platform-label">القيمة</label><input id="tp-value" class="platform-input" type="number" min="0" value="0"></div><div><label class="platform-label">Course/Lesson ID</label><input id="tp-target" class="platform-input"></div><div style="grid-column:1/-1"><button class="platform-btn primary" type="submit">إنشاء الكود</button></div></form></section><section class="platform-panel" style="margin-top:14px"><div class="platform-table-wrap"><table class="platform-table"><thead><tr><th>الكود</th><th>النوع</th><th>القيمة</th><th>الحالة</th><th>المستخدم</th></tr></thead><tbody id="teacher-promo-body"></tbody></table></div></section></main><script type="module" src="/platform.js"></script><script type="module">window.addEventListener('youssef-auth-ready',async(e)=>{const P=window.YoussefAlaaPlatform,u=e.detail.appUser;if(!u||!['teacher','ta'].includes(u.role))return;const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const body=document.querySelector('#teacher-promo-body');const load=async()=>{const s=await P.getDocs(P.query(P.collection(P.db,'promoCodes'),P.where('createdByUid','==',P.auth.currentUser.uid)));body.innerHTML=s.docs.map(d=>{const x=d.data();return `<tr><td>${esc(x.code)}</td><td>${esc(x.type)}</td><td>${x.value}</td><td>${x.active?'<span class="platform-badge success">فعال</span>':'<span class="platform-badge warn">مستخدم</span>'}</td><td>${esc(x.usedByUid||'—')}</td></tr>`}).join('')||'<tr><td colspan="5" class="platform-empty">لا توجد أكواد.</td></tr>'};document.querySelector('#teacher-promo-form').addEventListener('submit',async ev=>{ev.preventDefault();const code=document.querySelector('#tp-code').value.trim().toUpperCase();if(!/^[A-Z0-9-]{6,32}$/.test(code))return P.messageBox('صيغة الكود غير صحيحة.');try{await P.setDoc(P.doc(P.db,'promoCodes',code),{code,type:document.querySelector('#tp-type').value,value:Number(document.querySelector('#tp-value').value||0),courseId:document.querySelector('#tp-target').value.trim()||null,active:true,createdByUid:P.auth.currentUser.uid,createdByRole:u.role,usedByUid:null,createdAt:P.serverTimestamp()});P.messageBox('تم إنشاء الكود.','success');ev.target.reset();load()}catch(err){P.messageBox(err.message)}});load()});</script></body></html>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>أكواد المدرس — منصة يوسف علاء</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/platform.css"></head><body data-protected="teacher"><header class="app-header"><div><div class="brand-title">منصة يوسف علاء التعليمية</div><div class="brand-subtitle">إنشاء الأكواد للطلاب</div></div><div class="header-actions"><a href="/teacher-dashboard.html" class="platform-btn">لوحة المدرس</a><button data-logout class="platform-btn danger">خروج</button></div></header><main class="app-main"><div class="page-title"><h1>أكواد المدرس</h1><p>أكواد أحادية الاستخدام مع سجل واضح للمنشئ والاستخدام.</p></div><section class="platform-panel"><form id="teacher-promo-form" class="platform-grid platform-grid-3"><div><label class="platform-label">الكود</label><input id="tp-code" class="platform-input" required placeholder="YS-2026-XXXX"></div><div><label class="platform-label">النوع</label><select id="tp-type" class="platform-select"><option value="lesson">درس</option><option value="course">كورس</option><option value="discount">خصم</option></select></div><div><label class="platform-label">القيمة</label><input id="tp-value" class="platform-input" type="number" min="0" value="0"></div><div><label class="platform-label">معرّف الكورس/الدرس</label><input id="tp-target" class="platform-input"></div><div style="grid-column:1/-1"><button class="platform-btn primary" type="submit">إنشاء الكود</button></div></form></section><section class="platform-panel" style="margin-top:14px"><div class="platform-table-wrap"><table class="platform-table"><thead><tr><th>الكود</th><th>النوع</th><th>القيمة</th><th>الحالة</th><th>المستخدم</th></tr></thead><tbody id="teacher-promo-body"></tbody></table></div></section></main><script type="module" src="/platform.js"></script><script>
+window.addEventListener('youssef-auth-ready', async (e) => {
+  const P = window.YoussefAlaaPlatform;
+  const u = e.detail?.appUser;
+  if (!P || !u || !['teacher','ta'].includes(u.role)) return;
+  const form = document.querySelector('#teacher-promo-form');
+  const body = document.querySelector('#teacher-promo-body');
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const load = async () => {
+    if (!body) return;
+    try {
+      const s = await P.getDocs(P.query(P.collection(P.db,'promoCodes'), P.where('createdByUid','==',P.auth.currentUser.uid), P.limit(200)));
+      body.innerHTML = s.docs.map(d => {
+        const x = d.data();
+        return '<tr><td>'+esc(x.code)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.targetId||x.courseId||'—')+'</td><td>'+esc(x.value)+'</td><td>'+(x.active?'<span class="platform-badge success">فعال</span>':'<span class="platform-badge warn">مستخدم</span>')+'</td><td>'+esc(x.usedByUid||'—')+'</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="platform-empty">لا توجد أكواد.</td></tr>';
+    } catch (err) { P.messageBox(err.message || 'تعذر تحميل الأكواد.'); }
+  };
+  if (!form) return;
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const code = document.querySelector('#tp-code').value.trim().toUpperCase();
+    const type = document.querySelector('#tp-type').value;
+    const value = Number(document.querySelector('#tp-value').value || 0);
+    const targetId = document.querySelector('#tp-target').value.trim();
+    if (!/^[A-Z0-9-]{6,32}$/.test(code)) return P.messageBox('صيغة الكود غير صحيحة.');
+    if (['lesson','course','subscription'].includes(type) && !targetId) return P.messageBox('اكتب معرّف الكورس أو الدرس المستهدف.');
+    try {
+      await P.setDoc(P.doc(P.db,'promoCodes',code), {
+        code, type, value, targetId: targetId || null,
+        courseId: ['course','subscription'].includes(type) ? (targetId || null) : null,
+        active: true, createdByUid: P.auth.currentUser.uid, createdByRole: u.role,
+        usedByUid: null, createdAt: P.serverTimestamp()
+      });
+      P.messageBox('تم إنشاء الكود.','success');
+      form.reset();
+      load();
+    } catch (err) { P.messageBox(err.message || 'تعذر إنشاء الكود.'); }
+  });
+  load();
+});
+</script></body></html>

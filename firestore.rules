@@ -240,6 +240,11 @@ service cloud.firestore {
       allow create: if isStudent() &&
         request.resource.data.studentUid == request.auth.uid &&
         request.resource.data.examId is string &&
+        request.resource.data.attemptNumber is int &&
+        request.resource.data.attemptNumber >= 1 &&
+        request.resource.data.attemptNumber <= 3 &&
+        request.resource.data.attemptNumber <= get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.attemptsAllowed &&
+        request.resource.data.__name__ == /databases/$(database)/documents/examAttempts/$(request.auth.uid + '_' + request.resource.data.examId + '_' + string(request.resource.data.attemptNumber)) &&
         exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)) &&
         get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.published == true &&
         enrolled(get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.courseId);

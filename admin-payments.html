@@ -33,6 +33,9 @@ window.addEventListener('youssef-auth-ready', async (e) => {
 
         const studentSnap = payment.studentUid ? await tx.get(P.doc(P.db,'users',payment.studentUid)) : null;
         const student = studentSnap?.exists() ? studentSnap.data() : {};
+        let discountRef = null;
+        let discountCode = null;
+        let discountPercent = 0;
 
         if (nextStatus !== 'approved') {
           tx.update(paymentRef, { status:'rejected', reviewedBy:P.auth.currentUser.uid, reviewedAt:P.serverTimestamp(), updatedAt:P.serverTimestamp() });
@@ -66,6 +69,20 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         const totalCatalog = courseRows.reduce((sum,x)=>sum+Math.max(0,x.catalogPrice),0);
         const paymentAmount = Number(payment.amount || 0);
         if (paymentAmount <= 0) throw new Error('مبلغ الدفع غير صالح.');
+
+        const suppliedPromo = String(payment.promoCode || '').trim().toUpperCase();
+        if (suppliedPromo) {
+          discountRef = P.doc(P.db,'promoCodes',suppliedPromo);
+          const discountSnap = await tx.get(discountRef);
+          if (!discountSnap.exists()) throw new Error('كود الخصم غير موجود.');
+          const discount = discountSnap.data();
+          if (discount.active !== true || discount.type !== 'discount') throw new Error('كود الخصم غير فعال.');
+          discountCode = suppliedPromo;
+          discountPercent = Math.max(0, Math.min(100, Number(discount.value || 0)));
+          const expectedAmount = Math.max(0, Math.round((Number(payment.catalogTotal ?? totalCatalog) * (100 - discountPercent)) * 100) / 10000);
+          if (Math.abs(paymentAmount - expectedAmount) > 0.01) throw new Error('مبلغ الدفع لا يطابق الخصم المسجل.');
+          tx.update(discountRef,{active:false,usedByUid:payment.studentUid||null,usedAt:P.serverTimestamp(),usedPaymentId:paymentSnap.id});
+        }
 
         const teacherCache = {};
         const teacherIds = [];

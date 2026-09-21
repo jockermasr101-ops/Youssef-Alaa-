@@ -84,7 +84,14 @@ service cloud.firestore {
            'updatedAt',
            'bio',
            'avatarUrl'
-         ]));
+         ]) ||
+         (resource.data.role == 'student' &&
+          request.resource.data.role == 'student' &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.reviewState == resource.data.reviewState &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points','updatedAt']) &&
+          request.resource.data.points >= resource.data.points &&
+          request.resource.data.points <= resource.data.points + 100);
 
       allow delete: if isOwner() || (isAdmin() && resource.data.role != 'owner');
     }

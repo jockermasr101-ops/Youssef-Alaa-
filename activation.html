@@ -183,6 +183,7 @@
 <script>
 window.addEventListener('youssef-auth-ready', () => {
   const P = window.YoussefAlaaPlatform;
+  const u = e.detail?.appUser || {};
   if (!P) return;
 
   window.activateCode = async function () {
@@ -250,6 +251,11 @@ window.addEventListener('youssef-auth-ready', () => {
           const enrollmentRef = P.doc(P.db, 'enrollments', uid + '_' + targetId);
           tx.set(enrollmentRef, {
             studentUid: uid,
+            studentName: u.displayName || '',
+            studentPhone: u.studentPhone || '',
+            studentGrade: u.grade || '',
+            studentTrack: u.track || '',
+            teacherId: null,
             courseId: targetId,
             source: type === 'subscription' ? 'promo_subscription' : 'promo',
             promoCode: clean,

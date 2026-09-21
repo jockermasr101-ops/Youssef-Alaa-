@@ -211,15 +211,17 @@ window.addEventListener('youssef-auth-ready', () => {
       const redemptionId = clean + '_' + uid;
       const redemptionRef = P.doc(P.db, 'promoRedemptions', redemptionId);
       let targetTeacherId = null;
-      const quickType = String((await P.getDoc(codeRef)).data()?.type || '').toLowerCase();
-      const quickTarget = String((await P.getDoc(codeRef)).data()?.targetId || (await P.getDoc(codeRef)).data()?.courseId || '').trim();
-      if (['course','subscription'].includes(quickType) && quickTarget) {
-        const courseSnap = await P.getDoc(P.doc(P.db,'courses',quickTarget));
-        if (courseSnap.exists()) targetTeacherId = courseSnap.data().teacherId || null;
-      }
 
       await P.runTransaction(P.db, async (tx) => {
         const codeSnap = await tx.get(codeRef);
+        if (!codeSnap.exists()) throw new Error('الكود غير موجود.');
+        const previewCode = codeSnap.data();
+        const quickType = String(previewCode.type || '').toLowerCase();
+        const quickTarget = String(previewCode.targetId || previewCode.courseId || '').trim();
+        if (['course','subscription'].includes(quickType) && quickTarget) {
+          const courseSnap = await tx.get(P.doc(P.db,'courses',quickTarget));
+          if (courseSnap.exists()) targetTeacherId = courseSnap.data().teacherId || null;
+        }
         if (!codeSnap.exists()) throw new Error('الكود غير موجود.');
         const code = codeSnap.data();
 

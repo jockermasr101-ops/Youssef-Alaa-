@@ -181,128 +181,112 @@
 </div>
 <!-- Interactive Client-side Script -->
 <script>
-    function handleCodeInput(input) {
-      let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const clearBtn = document.getElementById('clear-input-btn');
-      
-      if (val.length > 0) {
-        clearBtn.classList.remove('hidden');
-      } else {
-        clearBtn.classList.add('hidden');
-      }
-
-      // Auto-format format XXXX-XXXX-XXXX
-      let formatted = '';
-      for (let i = 0; i < val.length; i++) {
-        if (i === 4 || i === 8) {
-          formatted += '-';
-        }
-        formatted += val[i];
-      }
-      input.value = formatted;
-    }
-
-    function clearCodeInput() {
-      const input = document.getElementById('course-code');
-      input.value = '';
-      document.getElementById('clear-input-btn').classList.add('hidden');
-      hideStatus();
-      input.focus();
-    }
-
-    async function pasteFromClipboard() {
-      try {
-        const text = await navigator.clipboard.readText();
-        const input = document.getElementById('course-code');
-        input.value = text.trim();
-        handleCodeInput(input);
-        input.focus();
-      } catch (err) {
-        alert('يرجى السماح بالوصول إلى الحافظة أو كتابة الكود يدوياً.');
-      }
-    }
-
-    function hideStatus() {
-      const statusBox = document.getElementById('status-box');
-      statusBox.className = 'hidden p-space-md rounded-xl transition-all';
-      statusBox.innerHTML = '';
-    }
-
-    function activateCode() {
-      const input = document.getElementById('course-code');
-      const btn = document.getElementById('submit-code-btn');
-      const btnText = document.getElementById('btn-text');
-      const btnIcon = document.getElementById('btn-icon');
-      const statusBox = document.getElementById('status-box');
-      const cleanVal = input.value.replace(/-/g, '').trim();
-
-      if (cleanVal.length < 8) {
-        statusBox.className = 'flex items-center gap-2 p-space-md rounded-xl bg-error-container text-on-error-container';
-        statusBox.innerHTML = '<span class="material-symbols-outlined text-[20px]">error</span><span class="font-label-md text-label-md">يرجى كتابة كود صالح ومكتمل من كارت الشحن.</span>';
-        input.focus();
-        return;
-      }
-
-      // Show processing state
-      btn.disabled = true;
-      btn.classList.add('opacity-80');
-      btnIcon.innerText = 'sync';
-      btnIcon.classList.add('animate-spin');
-      btnText.innerText = 'جارٍ التحقق من السيرفر...';
-
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.classList.remove('opacity-80');
-        btnIcon.classList.remove('animate-spin');
-        btnIcon.innerText = 'bolt';
-        btnText.innerText = 'تفعيل الكود الآن';
-
-        // Successful demo state
-        statusBox.className = 'flex items-start gap-3 p-space-md rounded-xl bg-surface-container text-on-surface';
-        statusBox.innerHTML = `
-          <span class="material-symbols-outlined text-tertiary text-[24px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-          <div class="text-right">
-            <h4 class="font-label-lg text-label-lg font-bold text-on-surface">تم تفعيل الكود بنجاح!</h4>
-            <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">تم فتح "كورس المراجعة المركزة - الفصل الثالث" وإضافته إلى قائمة كورساتك المتاحة الآن.</p>
-            <div class="mt-2 flex gap-2">
-              <a href="#" class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm font-semibold inline-block">الانتقال للمحاضرة الأولى</a>
-            </div>
-          </div>
-        `;
-      }, 1000);
-    }
-  </script>
-</div></main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.03)] mt-space-xl"><div class="max-w-[1280px] mx-auto px-gutter py-space-xl"><div class="grid grid-cols-1 md:grid-cols-4 gap-space-xl mb-space-xl"><div class="space-y-space-md"><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm text-primary">منصة يوسف علاء التعليمية</span></div><p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">المنصة الأكاديمية الرائدة لتفوق طلاب الثانوية العامة، نقدم شرحاً منهجياً مبسطاً مع أحدث بنوك الأسئلة التفاعلية والامتحانات التجريبية المعتمدة.</p></div><div><h4 class="font-label-lg text-label-lg text-on-surface mb-space-md">روابط سريعة</h4><ul class="space-y-space-sm"><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">تفعيل كود الكورس</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">جدول الحصص الأسبوعي</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">المراجعات النهائية والملخصات</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">أوائل الدفعات السابقة</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">التقويم الدراسي</li></ul></div><div><h4 class="font-label-lg text-label-lg text-on-surface mb-space-md">الدعم الفني والأكاديمي</h4><ul class="space-y-space-sm"><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">مركز مساعدة الطلاب</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">التواصل عبر واتساب الأكاديمية</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">شروط الاستخدام والاشتراك</li><li class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">سياسة الخصوصية وأمان الحساب</li></ul></div><div><h4 class="font-label-lg text-label-lg text-on-surface mb-space-md">ساعات التواصل</h4><div class="space-y-space-xs font-body-sm text-body-sm text-on-surface-variant"><p>السبت - الخميس: ٩:٠٠ ص - ١٠:٠٠ م</p><p>فريق الدعم الفني جاهز لمساعدتك في أي وقت خلال فترة الامتحانات.</p></div></div></div><div class="pt-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-md font-body-sm text-body-sm text-on-surface-variant"><p>© 2025 منصة يوسف علاء التعليمية. جميع الحقوق محفوظة.</p><div class="flex items-center gap-space-lg"><span class="hover:text-on-surface transition-colors cursor-pointer">سياسة الخصوصية</span><span class="hover:text-on-surface transition-colors cursor-pointer">الشروط والأحكام</span><span class="hover:text-on-surface transition-colors cursor-pointer">خريطة المنصة</span></div></div></div></footer>
-<script type="module" src="/platform.js"></script>
-
-<script type="module">
 window.addEventListener('youssef-auth-ready', () => {
-  const P=window.YoussefAlaaPlatform;
-  window.activateCode = async function(){
-    const input=document.getElementById('course-code');
-    const btn=document.getElementById('submit-code-btn');
-    const btnText=document.getElementById('btn-text');
-    const btnIcon=document.getElementById('btn-icon');
-    const statusBox=document.getElementById('status-box');
-    const clean=String(input.value||'').replace(/-/g,'').trim().toUpperCase();
-    if(clean.length<8){statusBox.className='flex items-center gap-2 p-space-md rounded-xl bg-error-container text-on-error-container';statusBox.innerHTML='<span>يرجى كتابة كود صالح ومكتمل.</span>';return;}
-    P.setButtonBusy(btn,true,'جاري التحقق...');btnIcon.innerText='sync';btnIcon.classList.add('animate-spin');
-    try{
-      const codeRef=P.doc(P.db,'promoCodes',clean);
-      const redemptionId=`${clean}_${P.auth.currentUser.uid}`;
-      await P.runTransaction(P.db,async(tx)=>{
-        const codeSnap=await tx.get(codeRef); if(!codeSnap.exists()) throw new Error('الكود غير موجود.');
-        const c=codeSnap.data(); if(!c.active) throw new Error('الكود مستخدم أو غير فعال.');
-        const redRef=P.doc(P.db,'promoRedemptions',redemptionId); const redSnap=await tx.get(redRef); if(redSnap.exists()) throw new Error('لقد استخدمت هذا الكود من قبل.');
-        tx.update(codeRef,{active:false,usedByUid:P.auth.currentUser.uid,usedAt:P.serverTimestamp()});
-        tx.set(redRef,{code:clean,studentUid:P.auth.currentUser.uid,type:c.type,value:c.value,courseId:c.courseId||null,createdAt:P.serverTimestamp()});
-        if(c.type==='lesson' && c.courseId){const laRef=P.doc(P.db,'lessonAccess',`${P.auth.currentUser.uid}_${c.courseId}`);tx.set(laRef,{studentUid:P.auth.currentUser.uid,lessonId:c.courseId,source:'promo',createdAt:P.serverTimestamp(),active:true},{merge:true});}if(c.type==='course' && c.courseId){const enRef=P.doc(P.db,'enrollments',`${P.auth.currentUser.uid}_${c.courseId}`);tx.set(enRef,{studentUid:P.auth.currentUser.uid,courseId:c.courseId,source:'promo',createdAt:P.serverTimestamp(),active:true},{merge:true});}
+  const P = window.YoussefAlaaPlatform;
+  if (!P) return;
+
+  window.activateCode = async function () {
+    const input = document.getElementById('course-code');
+    const btn = document.getElementById('submit-code-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnIcon = document.getElementById('btn-icon');
+    const statusBox = document.getElementById('status-box');
+    const clean = String(input?.value || '').replace(/-/g, '').trim().toUpperCase();
+
+    if (!clean || clean.length < 6) {
+      statusBox.className = 'flex items-center gap-2 p-space-md rounded-xl bg-error-container text-on-error-container';
+      statusBox.innerHTML = '<span>اكتب كودًا صحيحًا.</span>';
+      return;
+    }
+
+    P.setButtonBusy(btn, true, 'جاري التحقق...');
+    if (btnIcon) { btnIcon.innerText = 'sync'; btnIcon.classList.add('animate-spin'); }
+
+    try {
+      const uid = P.auth.currentUser?.uid;
+      if (!uid) throw new Error('يجب تسجيل الدخول أولًا.');
+
+      const codeRef = P.doc(P.db, 'promoCodes', clean);
+      const redemptionId = clean + '_' + uid;
+      const redemptionRef = P.doc(P.db, 'promoRedemptions', redemptionId);
+
+      await P.runTransaction(P.db, async (tx) => {
+        const codeSnap = await tx.get(codeRef);
+        if (!codeSnap.exists()) throw new Error('الكود غير موجود.');
+        const code = codeSnap.data();
+
+        if (code.active !== true) throw new Error('الكود مستخدم أو غير فعال.');
+        const type = String(code.type || '').toLowerCase();
+        const targetId = String(code.targetId || code.courseId || '').trim();
+
+        if (!['lesson', 'course', 'subscription', 'discount'].includes(type)) {
+          throw new Error('نوع الكود غير صالح.');
+        }
+
+        const redemptionSnap = await tx.get(redemptionRef);
+        if (redemptionSnap.exists()) throw new Error('لقد استخدمت هذا الكود من قبل.');
+
+        tx.update(codeRef, {
+          active: false,
+          usedByUid: uid,
+          usedAt: P.serverTimestamp()
+        });
+
+        const redemption = {
+          code: clean,
+          studentUid: uid,
+          type,
+          value: Number(code.value || 0),
+          courseId: type === 'course' || type === 'subscription' ? targetId : null,
+          lessonId: type === 'lesson' ? targetId : null,
+          targetId: targetId || null,
+          createdAt: P.serverTimestamp()
+        };
+
+        tx.set(redemptionRef, redemption);
+
+        if (type === 'course' || type === 'subscription') {
+          if (!targetId) throw new Error('الكود لا يحتوي على كورس مستهدف.');
+          const enrollmentRef = P.doc(P.db, 'enrollments', uid + '_' + targetId);
+          tx.set(enrollmentRef, {
+            studentUid: uid,
+            courseId: targetId,
+            source: type === 'subscription' ? 'promo_subscription' : 'promo',
+            promoCode: clean,
+            active: true,
+            createdAt: P.serverTimestamp(),
+            updatedAt: P.serverTimestamp()
+          }, { merge: true });
+        }
+
+        if (type === 'lesson') {
+          if (!targetId) throw new Error('الكود لا يحتوي على درس مستهدف.');
+          const accessRef = P.doc(P.db, 'lessonAccess', uid + '_' + targetId);
+          tx.set(accessRef, {
+            studentUid: uid,
+            lessonId: targetId,
+            source: 'promo',
+            promoCode: clean,
+            active: true,
+            createdAt: P.serverTimestamp(),
+            updatedAt: P.serverTimestamp()
+          }, { merge: true });
+        }
       });
-      statusBox.className='flex items-start gap-3 p-space-md rounded-xl bg-tertiary-fixed/30 text-on-surface';
-      statusBox.innerHTML='<span class="font-bold">تم تفعيل الكود بنجاح ✅</span><p>تم تسجيل الاستخدام على حسابك. لو الكود خاص بكورس فسيظهر ضمن كورساتك بعد تحديث الصفحة.</p>';
-      P.logActivity('promo_redeemed',{code:clean});
-    }catch(err){statusBox.className='flex items-start gap-3 p-space-md rounded-xl bg-error-container text-on-error-container';statusBox.innerHTML=`<span class="font-bold">${String(err.message||'فشل تفعيل الكود.').replace(/[<>]/g,'')}</span>`}
-    finally{btnIcon.classList.remove('animate-spin');btnIcon.innerText='bolt';P.setButtonBusy(btn,false)}
+
+      statusBox.className = 'flex items-start gap-3 p-space-md rounded-xl bg-tertiary-fixed/30 text-on-surface';
+      statusBox.innerHTML = '<span class="font-bold">تم تفعيل الكود بنجاح ✅</span><p>تم تسجيل الاستخدام، وسيظهر المحتوى المرتبط بالحساب بعد تحديث الصفحة.</p>';
+      try { await P.logActivity('promo_redeemed', { code: clean }); } catch (_) {}
+      if (btnText) btnText.innerText = 'تم التفعيل';
+      if (input) input.value = '';
+    } catch (err) {
+      statusBox.className = 'flex items-start gap-3 p-space-md rounded-xl bg-error-container text-on-error-container';
+      const safe = String(err?.message || 'فشل تفعيل الكود.').replace(/[<>]/g, '');
+      statusBox.innerHTML = '<span class="font-bold">' + safe + '</span>';
+    } finally {
+      if (btnIcon) { btnIcon.classList.remove('animate-spin'); btnIcon.innerText = 'bolt'; }
+      P.setButtonBusy(btn, false);
+    }
   };
 });
 </script>

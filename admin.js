@@ -86,15 +86,47 @@ window.addEventListener('youssef-auth-ready', async (event) => {
   async function createPromo() {
     const form=$('#promo-form'); if(!form)return;
     form.addEventListener('submit',async e=>{e.preventDefault();
-      const code=$('#promo-code').value.trim().toUpperCase(); const type=$('#promo-type').value; const value=Number($('#promo-value').value); const courseId=$('#promo-course').value.trim();
-      if(code.length<6 || !/^[A-Z0-9-]+$/.test(code)) return P.messageBox('الكود يجب أن يكون 6 أحرف/أرقام على الأقل.');
-      try{await P.setDoc(P.doc(P.db,'promoCodes',code),{code,type,value,courseId,active:true,createdByUid:P.auth.currentUser.uid,createdByRole:appUser.role,createdAt:P.serverTimestamp(),usedByUid:null}); P.messageBox('تم إنشاء الكود.','success');form.reset();loadPromos();}catch(err){P.messageBox(err.message||'تعذر إنشاء الكود.')}
+      const code=$('#promo-code').value.trim().toUpperCase(); const type=$('#promo-type').value; const value=Number($('#promo-value').value); const targetId=$('#promo-course').value.trim();
+      if(code.length<6 || !/^[A-Z0-9-]+$/.test(code)) return P.messageBox('الكود يجب أن يكون 6 أحرف/أرقام على الأقل.'); if(['lesson','course','subscription'].includes(type) && !targetId) return P.messageBox('اكتب معرّف الكورس أو الدرس المستهدف.');
+      try{await P.setDoc(P.doc(P.db,'promoCodes',code),{code,type,value,targetId:targetId||null,courseId:['course','subscription'].includes(type)?(targetId||null):null,active:true,createdByUid:P.auth.currentUser.uid,createdByRole:appUser.role,createdAt:P.serverTimestamp(),usedByUid:null}); P.messageBox('تم إنشاء الكود.','success');form.reset();loadPromos();}catch(err){P.messageBox(err.message||'تعذر إنشاء الكود.')}
     });
   }
-  async function loadPromos(){const box=$('#promos-body');if(!box)return;try{const r=await getAll('promoCodes');box.innerHTML=r.map(x=>`<tr><td class="font-mono">${esc(x.code)}</td><td>${esc(x.type)}</td><td>${fmt(x.value)}</td><td>${badge(x.active?'active':'suspended')}</td><td>${esc(x.usedByUid||'—')}</td><td>${date(x.createdAt)}</td></tr>`).join('')||`<tr><td colspan="6" class="platform-empty">لا توجد أكواد.</td></tr>`}catch(e){box.innerHTML='<tr><td colspan="6" class="platform-empty">تعذر تحميل الأكواد.</td></tr>'}}
+  async function loadPromos(){const box=$('#promos-body');if(!box)return;try{const r=await getAll('promoCodes');box.innerHTML=r.map(x=>`<tr><td class="font-mono">${esc(x.code)}</td><td>${esc(x.type)}</td><td>${esc(x.targetId||x.courseId||'—')}</td><td>${fmt(x.value)}</td><td>${badge(x.active?'active':'suspended')}</td><td>${esc(x.usedByUid||'—')}</td><td>${date(x.createdAt)}</td></tr>`).join('')||`<tr><td colspan="6" class="platform-empty">لا توجد أكواد.</td></tr>`}catch(e){box.innerHTML='<tr><td colspan="6" class="platform-empty">تعذر تحميل الأكواد.</td></tr>'}}
+
+  async function loadExamsForApproval(){
+    const box=$('#exams-approval-body'); if(!box)return;
+    try{
+      const rows=await getAll('exams');
+      box.innerHTML=rows.map(x=>`<tr><td>${esc(x.title)}</td><td>${esc(x.teacherId||'—')}</td><td>${esc(x.courseId||'—')}</td><td>${badge(x.published?'active':'pending')}</td><td>${x.published?'—':`<button class="platform-btn success" data-publish-exam="${x.id}">نشر</button>`}</td></tr>`).join('')||'<tr><td colspan="5" class="platform-empty">لا توجد امتحانات.</td></tr>';
+      $('#exams-approval-body [data-publish-exam]').forEach(b=>b.onclick=async()=>{
+        try{
+          const examRef=P.doc(P.db,'exams',b.dataset.publishExam); const snap=await P.getDoc(examRef); if(!snap.exists())throw new Error('الامتحان غير موجود.');
+          const qs=await P.getDocs(P.query(P.collection(P.db,'questions'),P.where('examId','==',b.dataset.publishExam),P.limit(1)));
+          if(qs.empty) return P.messageBox('لا يمكن نشر امتحان بدون أسئلة.');
+          await P.updateDoc(examRef,{published:true,status:'published',updatedAt:P.serverTimestamp()}); P.messageBox('تم نشر الامتحان.','success'); loadExamsForApproval();
+        }catch(e){P.messageBox(e.message||'تعذر نشر الامتحان.')}
+      });
+    }catch(e){box.innerHTML='<tr><td colspan="5" class="platform-empty">تعذر تحميل الامتحانات.</td></tr>'}
+  }
+
+  async function loadQuestionsForApproval(){
+    const box=$('#questions-approval-body'); if(!box)return;
+    try{
+      const rows=await getAll('questions');
+      box.innerHTML=rows.map(x=>`<tr><td>${esc(x.examId||'—')}</td><td>${esc(x.teacherId||'—')}</td><td>${esc(x.type||'—')}</td><td>${esc(String(x.text||'').slice(0,100))}</td><td>${badge(x.published?'active':'pending')}</td><td>${x.published?'—':`<button class="platform-btn success" data-publish-question="${x.id}">نشر</button>`}</td></tr>`).join('')||'<tr><td colspan="6" class="platform-empty">لا توجد أسئلة.</td></tr>';
+      $('#questions-approval-body [data-publish-question]').forEach(b=>b.onclick=async()=>{
+        try{
+          const ref=P.doc(P.db,'questions',b.dataset.publishQuestion); const snap=await P.getDoc(ref); if(!snap.exists())throw new Error('السؤال غير موجود.');
+          const examId=snap.data().examId; const examSnap=await P.getDoc(P.doc(P.db,'exams',examId));
+          if(!examSnap.exists() || examSnap.data().published!==true) return P.messageBox('انشر الامتحان أولًا.');
+          await P.updateDoc(ref,{published:true,status:'published',updatedAt:P.serverTimestamp()}); P.messageBox('تم نشر السؤال.','success'); loadQuestionsForApproval();
+        }catch(e){P.messageBox(e.message||'تعذر نشر السؤال.')}
+      });
+    }catch(e){box.innerHTML='<tr><td colspan="6" class="platform-empty">تعذر تحميل الأسئلة.</td></tr>'}
+  }
 
   async function loadLogs(){const box=$('#logs-body');if(!box)return;try{const r=await getAll('activityLogs','createdAt',120);box.innerHTML=r.map(x=>`<tr><td>${esc(x.type)}</td><td>${esc(x.uid)}</td><td>${esc(JSON.stringify(x.details||{}))}</td><td>${date(x.createdAt)}</td></tr>`).join('')||`<tr><td colspan="4" class="platform-empty">لا توجد سجلات.</td></tr>`}catch(e){box.innerHTML='<tr><td colspan="4" class="platform-empty">تعذر تحميل السجل.</td></tr>'}}
 
-  await Promise.all([loadStats(),loadPendingUsers(),loadCourses(),loadTeachers(),loadFinance(),loadPromos(),loadLogs(),createPromo()]);
-  const refresh=$('#refresh-admin'); if(refresh) refresh.onclick=()=>Promise.all([loadStats(),loadPendingUsers(),loadCourses(),loadTeachers(),loadFinance(),loadPromos(),loadLogs()]);
+  await Promise.all([loadStats(),loadPendingUsers(),loadCourses(),loadTeachers(),loadFinance(),loadPromos(),loadExamsForApproval(),loadQuestionsForApproval(),loadLogs(),createPromo()]);
+  const refresh=$('#refresh-admin'); if(refresh) refresh.onclick=()=>Promise.all([loadStats(),loadPendingUsers(),loadCourses(),loadTeachers(),loadFinance(),loadPromos(),loadExamsForApproval(),loadQuestionsForApproval(),loadLogs()]);
 });

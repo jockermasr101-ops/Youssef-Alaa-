@@ -177,6 +177,7 @@ window.addEventListener('youssef-auth-ready', async (e) => {
       const finalPassed=manual===0 && percent>=Number(selected.passScore||50);
       const attempt={
         studentUid:P.auth.currentUser.uid,
+        studentName:u.displayName||'',
         teacherId:selected.teacherId||null,
         examId:selected.id,
         courseId:selected.courseId||null,

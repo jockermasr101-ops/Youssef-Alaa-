@@ -1,9 +1,11 @@
 window.addEventListener('youssef-auth-ready',async(e)=>{
  const P=window.YoussefAlaaPlatform,u=e.detail?.appUser;if(!P||!u)return;
- const byLabel={};document.querySelectorAll('input').forEach(i=>{const v=i.value;if(v.includes('youssef.alaa@')||v.includes('example.com'))byLabel.email=i});
- const inputs=[...document.querySelectorAll('input')].filter(i=>i.type!=='password');
- // Prefer exact values from the Stitch page where possible.
- const name=inputs.find(i=>i.value.includes('يوسف علاء')); const school=inputs.find(i=>i.value.includes('مدرسة'));
- const phones=inputs.filter(i=>i.type==='tel');
- if(name)name.value=u.displayName||name.value;if(byLabel.email)byLabel.email.value=u.email||byLabel.email.value;if(phones[0])phones[0].value=u.studentPhone||phones[0].value;if(phones[1])phones[1].value=u.parentPhone||phones[1].value;if(school)school.value=u.school||school.value;
- const form=document.querySelector('#edit-focus-btn')?.closest('form');if(form&&!form.dataset.bound){form.dataset.bound='1';form.addEventListener('submit',async ev=>{ev.preventDefault();try{await P.updateDoc(P.doc(P.db,'users',P.auth.currentUser.uid),{displayName:name?.value.trim()||u.displayName,school:school?.value.trim()||u.school,parentPhone:phones[1]?.value.trim()||u.parentPhone,updatedAt:P.serverTimestamp()});await P.auth.currentUser.updateProfile({displayName:name?.value.trim()||u.displayName});P.messageBox('تم حفظ بيانات الحساب.','success')}catch(err){P.messageBox(err.message)}})}});
+ const set=(id,v)=>{const el=document.querySelector(id);if(el)el.value=v??''};
+ set('#account-name',u.displayName);set('#account-email',u.email);set('#account-student-phone',u.studentPhone);set('#account-parent-phone',u.parentPhone);set('#account-parent2-phone',u.parentPhone2);set('#account-governorate',u.governorate);set('#account-city',u.city);set('#account-school',u.school);set('#account-grade',u.grade);set('#account-track',u.track);
+ document.querySelector('#account-save')?.addEventListener('click',async()=>{
+  try{
+   const data={displayName:document.querySelector('#account-name')?.value.trim(),studentPhone:document.querySelector('#account-student-phone')?.value.trim(),parentPhone:document.querySelector('#account-parent-phone')?.value.trim(),parentPhone2:document.querySelector('#account-parent2-phone')?.value.trim(),governorate:document.querySelector('#account-governorate')?.value.trim(),city:document.querySelector('#account-city')?.value.trim(),school:document.querySelector('#account-school')?.value.trim(),updatedAt:P.serverTimestamp()};
+   await P.updateDoc(P.doc(P.db,'users',u.uid),data);await P.auth.currentUser.updateProfile({displayName:data.displayName});P.messageBox('تم حفظ بيانات الحساب.','success');
+  }catch(err){P.messageBox(err.message||'تعذر حفظ البيانات.')}
+ });
+});

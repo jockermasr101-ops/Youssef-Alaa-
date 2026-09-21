@@ -1,1 +1,141 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مدفوعات الطلاب — منصة يوسف علاء</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/platform.css"></head><body data-protected="admin"><main class="app-main"><div class="page-title"><h1>مدفوعات الطلاب</h1><p>مراجعة الإيصالات وتفعيل الاشتراكات بعد الاعتماد.</p></div><section class="platform-panel"><div class="platform-table-wrap"><table class="platform-table"><thead><tr><th>الطالب</th><th>الكورس</th><th>المبلغ</th><th>الطريقة</th><th>المرجع</th><th>الإيصال</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="payments-body"></tbody></table></div></section></main><script type="module" src="/platform.js"></script><script type="module">window.addEventListener('youssef-auth-ready',async(e)=>{const P=window.YoussefAlaaPlatform,box=document.querySelector('#payments-body');if(!box||!['admin','owner'].includes(e.detail?.appUser?.role))return;const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const load=async()=>{const s=await P.getDocs(P.query(P.collection(P.db,'paymentSubmissions'),P.orderBy('createdAt','desc'),P.limit(200)));box.innerHTML=s.docs.map(d=>{const x=d.data();return `<tr><td>${esc(x.studentName)}</td><td>${esc(x.courseId)}</td><td>${x.amount} ج.م</td><td>${esc(x.method)}</td><td>${esc(x.reference)}</td><td><a class="platform-btn" target="_blank" rel="noopener" href="${esc(x.receiptUrl)}">عرض</a></td><td>${x.status}</td><td>${x.status==='pending'?`<div class="platform-actions"><button class="platform-btn success" data-pay="${d.id}" data-s="approved">اعتماد</button><button class="platform-btn danger" data-pay="${d.id}" data-s="rejected">رفض</button></div>`:'—'}</td></tr>`}).join('')||'<tr><td colspan="8" class="platform-empty">لا توجد مدفوعات.</td></tr>';document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=async()=>{try{const ref=P.doc(P.db,'paymentSubmissions',b.dataset.pay);const snap=await P.getDoc(ref);const x=snap.data();await P.updateDoc(ref,{status:b.dataset.s,reviewedBy:P.auth.currentUser.uid,reviewedAt:P.serverTimestamp()});if(b.dataset.s==='approved'&&x.courseId){await P.setDoc(P.doc(P.db,'enrollments',`${x.studentUid}_${x.courseId}`),{studentUid:x.studentUid,courseId:x.courseId,teacherId:x.teacherId||null,source:'manual_payment',amount:x.amount,active:true,createdAt:P.serverTimestamp(),updatedAt:P.serverTimestamp()},{merge:true});await P.addDoc(P.collection(P.db,'notifications'),{userId:x.studentUid,title:'تم اعتماد الدفع',body:'تم تفعيل الكورس المرتبط بطلب الدفع.',read:false,createdAt:P.serverTimestamp()});}P.messageBox('تم تحديث طلب الدفع.','success');load()}catch(err){P.messageBox(err.message)}})};load()});</script></body></html>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مدفوعات الطلاب — منصة يوسف علاء</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/platform.css"></head><body data-protected="admin"><main class="app-main"><div class="page-title"><h1>مدفوعات الطلاب</h1><p>مراجعة الإيصالات وتفعيل الاشتراكات بعد الاعتماد.</p></div><section class="platform-panel"><div class="platform-table-wrap"><table class="platform-table"><thead><tr><th>الطالب</th><th>الكورس</th><th>المبلغ</th><th>الطريقة</th><th>المرجع</th><th>الإيصال</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="payments-body"></tbody></table></div></section></main><script type="module" src="/platform.js"></script><script>
+window.addEventListener('youssef-auth-ready', async (e) => {
+  const P = window.YoussefAlaaPlatform;
+  const box = document.querySelector('#payments-body');
+  if (!P || !box || !['admin','owner'].includes(e.detail?.appUser?.role)) return;
+
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = n => new Intl.NumberFormat('ar-EG').format(Number(n || 0));
+
+  async function load() {
+    try {
+      const s = await P.getDocs(P.query(P.collection(P.db,'paymentSubmissions'), P.orderBy('createdAt','desc'), P.limit(200)));
+      box.innerHTML = s.docs.map(d => {
+        const x = d.data();
+        const ids = Array.isArray(x.courseIds) ? x.courseIds : (x.courseId ? [x.courseId] : []);
+        return '<tr><td>'+esc(x.studentName)+'</td><td>'+esc(ids.join(', '))+'</td><td>'+money(x.amount)+' ج.م</td><td>'+esc(x.method)+'</td><td>'+esc(x.reference||'—')+'</td><td><a class="platform-btn" target="_blank" rel="noopener" href="'+esc(x.receiptUrl||'#')+'">عرض</a></td><td>'+esc(x.status)+'</td><td>'+(x.status==='pending'?'<div class="platform-actions"><button class="platform-btn success" data-pay="'+d.id+'" data-s="approved">اعتماد</button><button class="platform-btn danger" data-pay="'+d.id+'" data-s="rejected">رفض</button></div>':'—')+'</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="platform-empty">لا توجد مدفوعات.</td></tr>';
+
+      box.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => review(b.dataset.pay, b.dataset.s));
+    } catch (err) {
+      box.innerHTML = '<tr><td colspan="8" class="platform-empty">'+esc(err.message || 'تعذر تحميل المدفوعات.')+'</td></tr>';
+    }
+  }
+
+  async function review(paymentId, nextStatus) {
+    try {
+      const paymentRef = P.doc(P.db, 'paymentSubmissions', paymentId);
+      const result = await P.runTransaction(P.db, async tx => {
+        const paymentSnap = await tx.get(paymentRef);
+        if (!paymentSnap.exists()) throw new Error('طلب الدفع غير موجود.');
+        const payment = paymentSnap.data();
+        if (payment.status !== 'pending') throw new Error('تمت مراجعة هذا الطلب بالفعل.');
+
+        const studentSnap = payment.studentUid ? await tx.get(P.doc(P.db,'users',payment.studentUid)) : null;
+        const student = studentSnap?.exists() ? studentSnap.data() : {};
+
+        if (nextStatus !== 'approved') {
+          tx.update(paymentRef, { status:'rejected', reviewedBy:P.auth.currentUser.uid, reviewedAt:P.serverTimestamp(), updatedAt:P.serverTimestamp() });
+          return { studentUid:payment.studentUid, approved:false, teacherIds:[] };
+        }
+
+        const ids = Array.isArray(payment.courseIds) && payment.courseIds.length
+          ? payment.courseIds
+          : (payment.courseId ? [payment.courseId] : []);
+        if (!ids.length) throw new Error('لا يوجد كورس مرتبط بطلب الدفع.');
+
+        const items = Array.isArray(payment.items) ? payment.items : ids.map(id => ({ courseId:id }));
+        const courseRows = [];
+        for (const item of items.slice(0,20)) {
+          const id = String(item.courseId || '').trim();
+          if (!id) continue;
+          const courseSnap = await tx.get(P.doc(P.db,'courses',id));
+          if (!courseSnap.exists()) continue;
+          const course = courseSnap.data();
+          if (course.published !== true) throw new Error('يوجد كورس غير منشور داخل الطلب.');
+          const teacherId = item.teacherId || course.teacherId || null;
+          courseRows.push({
+            courseId:id,
+            title:course.title || item.title || '',
+            teacherId,
+            catalogPrice:Number(item.catalogPrice ?? course.price ?? 0)
+          });
+        }
+        if (!courseRows.length) throw new Error('الكورسات المرتبطة بالطلب غير موجودة.');
+
+        const totalCatalog = courseRows.reduce((sum,x)=>sum+Math.max(0,x.catalogPrice),0);
+        const paymentAmount = Number(payment.amount || 0);
+        if (paymentAmount <= 0) throw new Error('مبلغ الدفع غير صالح.');
+
+        const teacherCache = {};
+        const teacherIds = [];
+        for (const row of courseRows) {
+          if (!row.teacherId) continue;
+          if (!teacherCache[row.teacherId]) {
+            const teacherSnap = await tx.get(P.doc(P.db,'users',row.teacherId));
+            teacherCache[row.teacherId] = teacherSnap.exists() ? teacherSnap.data() : {};
+          }
+          if (!teacherIds.includes(row.teacherId)) teacherIds.push(row.teacherId);
+        }
+
+        let allocated = 0;
+        courseRows.forEach((row, index) => {
+          const weight = totalCatalog > 0 ? Math.max(0,row.catalogPrice) / totalCatalog : 1 / courseRows.length;
+          const amount = index === courseRows.length - 1 ? Math.max(0,paymentAmount - allocated) : Math.round(paymentAmount * weight * 100) / 100;
+          allocated += amount;
+          const rate = Math.max(0, Math.min(100, Number(teacherCache[row.teacherId]?.commissionRate ?? 15)));
+          const commission = Math.round(amount * rate) / 100;
+          const net = Math.max(0, amount - commission);
+          const saleRef = P.doc(P.db,'transactions',crypto.randomUUID());
+          tx.set(saleRef,{
+            type:'sale', teacherId:row.teacherId || null, studentUid:payment.studentUid || null,
+            courseId:row.courseId, paymentId, amount, commissionAmount:commission, netAmount:net,
+            rate, createdBy:P.auth.currentUser.uid, createdAt:P.serverTimestamp()
+          });
+          if (row.teacherId && commission > 0) {
+            tx.set(P.doc(P.db,'transactions',crypto.randomUUID()),{
+              type:'commission', teacherId:row.teacherId, studentUid:payment.studentUid || null,
+              courseId:row.courseId, paymentId, amount:commission, netAmount:0, rate,
+              createdBy:P.auth.currentUser.uid, createdAt:P.serverTimestamp()
+            });
+          }
+          if (row.teacherId) {
+            tx.set(P.doc(P.db,'notifications',crypto.randomUUID()),{
+              userId:row.teacherId, teacherId:P.auth.currentUser.uid,
+              title:'تم تسجيل بيع جديد', body:'تم اعتماد عملية شراء تخص الكورس: '+row.title,
+              read:false, createdAt:P.serverTimestamp()
+            });
+          }
+          tx.set(P.doc(P.db,'enrollments',payment.studentUid+'_'+row.courseId),{
+            studentUid:payment.studentUid, studentName:student.displayName||payment.studentName||'', studentPhone:student.studentPhone||'',
+            studentGrade:student.grade||'', studentTrack:student.track||'', courseId:row.courseId, teacherId:row.teacherId || null,
+            source:'manual_payment', paymentId, amount, active:true,
+            createdAt:P.serverTimestamp(), updatedAt:P.serverTimestamp()
+          },{merge:true});
+        });
+
+        tx.update(paymentRef,{
+          status:'approved',
+          reviewedBy:P.auth.currentUser.uid,
+          reviewedAt:P.serverTimestamp(),
+          updatedAt:P.serverTimestamp()
+        });
+
+        tx.set(P.doc(P.db,'notifications',crypto.randomUUID()),{
+          userId:payment.studentUid,
+          title:'تم اعتماد الدفع',
+          body:'تم اعتماد عملية الدفع وتفعيل المحتوى المرتبط بها.',
+          read:false, createdAt:P.serverTimestamp()
+        });
+        return {studentUid:payment.studentUid,approved:true,teacherIds};
+      });
+      P.messageBox(result.approved ? 'تم اعتماد الدفع وتفعيل الكورسات وتسجيل البيع.' : 'تم رفض طلب الدفع.','success');
+      load();
+    } catch (err) {
+      P.messageBox(err.message || 'تعذر مراجعة طلب الدفع.');
+    }
+  }
+
+  load();
+});
+</script></body></html>

@@ -230,7 +230,9 @@ function validNationalId(id) {
 }
 
 function fullNameLooksFourPart(name) {
-  return String(name || '').trim().split(/\s+/).filter(Boolean).length >= 4;
+  const value = String(name || '').trim();
+  const parts = value.split(/\s+/).filter(Boolean);
+  return parts.length >= 4 && /^[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\s]+$/.test(value);
 }
 
 function nowMs() { return Date.now(); }
@@ -313,7 +315,8 @@ async function uploadCloudinary(file, { onProgress, resourceType = 'auto', folde
   if (!CLOUDINARY_CONFIG.cloudName || !CLOUDINARY_CONFIG.uploadPreset) {
     throw new Error('إعدادات Cloudinary غير مكتملة في config.js.');
   }
-  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${resourceType}/upload`;
+  const safeType = ['auto', 'image', 'video', 'raw'].includes(resourceType) ? resourceType : 'auto';
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${safeType}/upload`;
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
@@ -387,13 +390,8 @@ async function bindAuthForms() {
       try {
         let identifier = document.getElementById('login-identifier')?.value.trim() || '';
         const password = document.getElementById('login-password')?.value || '';
-        if (!identifier || !password) throw new Error('اكتب بيانات الدخول كاملة.');
-        if (!identifier.includes('@')) {
-          const q = query(collection(db, 'users'), where('studentPhone', '==', normalizePhone(identifier)), limit(1));
-          const snap = await getDocs(q);
-          if (snap.empty) throw new Error('لم نجد حسابًا مرتبطًا برقم الهاتف. استخدم البريد الإلكتروني.');
-          identifier = snap.docs[0].data().email;
-        }
+        if (!identifier || !password) throw new Error('اكتب البريد الإلكتروني وكلمة المرور.');
+        if (!identifier.includes('@')) throw new Error('استخدم البريد الإلكتروني لتسجيل الدخول.');
         const cred = await signInWithEmailAndPassword(auth, identifier, password);
         const user = await getAppUser(cred.user);
         if (!user) throw new Error('تم تسجيل الدخول، لكن بيانات الحساب غير مكتملة. تواصل مع الإدارة.');
@@ -532,22 +530,48 @@ async function registerStudentDevice(appUser) {
       deviceId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       localStorage.setItem('ysa_device_id', deviceId);
     }
-    const myRef = doc(db, 'deviceSessions', deviceId);
-    const mine = await getDoc(myRef);
-    if (!mine.exists()) {
-      const s = await getDocs(query(collection(db,'deviceSessions'), where('uid','==',auth.currentUser.uid), limit(3)));
-      if (s.size >= 2) {
-        await signOut(auth);
-        messageBox('تم الوصول للحد الأقصى وهو جهازان لهذا الحساب. تواصل مع الإدارة لإدارة الأجهزة.');
-        setTimeout(()=>go('login.html'),900);
-        return false;
+
+    const uid = auth.currentUser.uid;
+    const storedSlot = Number(localStorage.getItem('ysa_device_slot') || 0);
+    const slots = [1, 2];
+    const preferred = storedSlot >= 1 && storedSlot <= 2 ? [storedSlot, ...slots.filter(x => x !== storedSlot)] : slots;
+
+    for (const slot of preferred) {
+      const ref = doc(db, 'deviceSessions', `${uid}_${slot}`);
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        const existing = snap.data();
+        if (existing.uid === uid && existing.deviceId === deviceId) {
+          await updateDoc(ref, { lastSeenAt: serverTimestamp(), userAgent: navigator.userAgent.slice(0, 180) });
+          localStorage.setItem('ysa_device_slot', String(slot));
+          return true;
+        }
+        continue;
       }
-      await setDoc(myRef,{uid:auth.currentUser.uid,deviceId,label:navigator.userAgent.slice(0,120),lastSeenAt:serverTimestamp(),createdAt:serverTimestamp()});
-    } else {
-      await updateDoc(myRef,{lastSeenAt:serverTimestamp()});
+
+      await setDoc(ref, {
+        uid,
+        deviceId,
+        slot,
+        userAgent: navigator.userAgent.slice(0, 180),
+        label: navigator.userAgent.slice(0, 120),
+        createdAt: serverTimestamp(),
+        lastSeenAt: serverTimestamp()
+      });
+      localStorage.setItem('ysa_device_slot', String(slot));
+      return true;
     }
-    return true;
-  } catch (e) { console.warn('device registration skipped', e); return true; }
+
+    await signOut(auth);
+    messageBox('هذا الحساب مسجل بالفعل على جهازين. ألغِ أحد الأجهزة من الإدارة قبل تسجيل جهاز جديد.');
+    setTimeout(() => go('login.html'), 900);
+    return false;
+  } catch (e) {
+    console.warn('device registration', e);
+    messageBox('تعذر تسجيل الجهاز الآن. حاول مرة أخرى.');
+    return false;
+  }
 }
 
 async function init() {

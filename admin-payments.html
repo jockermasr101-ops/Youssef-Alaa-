@@ -31,6 +31,9 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         const payment = paymentSnap.data();
         if (payment.status !== 'pending') throw new Error('تمت مراجعة هذا الطلب بالفعل.');
 
+        const studentSnap = payment.studentUid ? await tx.get(P.doc(P.db,'users',payment.studentUid)) : null;
+        const student = studentSnap?.exists() ? studentSnap.data() : {};
+
         if (nextStatus !== 'approved') {
           tx.update(paymentRef, { status:'rejected', reviewedBy:P.auth.currentUser.uid, reviewedAt:P.serverTimestamp(), updatedAt:P.serverTimestamp() });
           return { studentUid:payment.studentUid, approved:false, teacherIds:[] };
@@ -104,7 +107,8 @@ window.addEventListener('youssef-auth-ready', async (e) => {
             });
           }
           tx.set(P.doc(P.db,'enrollments',payment.studentUid+'_'+row.courseId),{
-            studentUid:payment.studentUid, courseId:row.courseId, teacherId:row.teacherId || null,
+            studentUid:payment.studentUid, studentName:student.displayName||payment.studentName||'', studentPhone:student.studentPhone||'',
+            studentGrade:student.grade||'', studentTrack:student.track||'', courseId:row.courseId, teacherId:row.teacherId || null,
             source:'manual_payment', paymentId, amount, active:true,
             createdAt:P.serverTimestamp(), updatedAt:P.serverTimestamp()
           },{merge:true});

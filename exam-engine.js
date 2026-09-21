@@ -45,10 +45,24 @@ window.addEventListener('youssef-auth-ready', async (e) => {
       const qs = await P.getDocs(P.query(P.collection(P.db,'questions'),P.where('examId','==',id),P.where('published','==',true),P.limit(500)));
       let rows = qs.docs.map(d=>({id:d.id,...d.data()}));
       rows = selected.randomizeQuestions === false ? rows : shuffle(rows);
-      questions = rows.slice(0,Math.max(1,Number(selected.questionCount||20))).map(q => ({
-        ...q,
-        options:Array.isArray(q.options) && selected.randomizeOptions !== false ? shuffle(q.options) : q.options
-      }));
+      questions = rows.slice(0,Math.max(1,Number(selected.questionCount||20))).map(q => {
+        const next = {...q, options:Array.isArray(q.options)?[...q.options]:q.options};
+        if (Array.isArray(next.options) && selected.randomizeOptions !== false && ['mcq','truefalse','multi'].includes(next.type||'mcq')) {
+          const original = [...next.options];
+          if (next.type === 'multi') {
+            const source = Array.isArray(next.correctAnswer) ? next.correctAnswer : String(next.correctAnswer??'').split(',').filter(Boolean).map(Number);
+            const correctValues = source.map(i=>original[Number(i)]).filter(v=>v!==undefined);
+            next.options = shuffle(original);
+            next.correctAnswer = correctValues.map(v=>next.options.indexOf(v)).filter(i=>i>=0);
+          } else {
+            const sourceIndex = Number.isInteger(Number(next.correctAnswer)) && String(next.correctAnswer).trim() !== '' ? Number(next.correctAnswer) : null;
+            const correctValue = sourceIndex !== null ? original[sourceIndex] : null;
+            next.options = shuffle(original);
+            if (correctValue !== null && correctValue !== undefined) next.correctAnswer = next.options.indexOf(correctValue);
+          }
+        }
+        return next;
+      });
 
       if (!questions.length) return P.messageBox('لا توجد أسئلة منشورة لهذا الامتحان.');
 
@@ -192,7 +206,8 @@ window.addEventListener('youssef-auth-ready', async (e) => {
         createdAt:P.serverTimestamp()
       };
 
-      await P.addDoc(P.collection(P.db,'examAttempts'),attempt);
+      const attemptId=P.auth.currentUser.uid+'_'+selected.id+'_'+String(attempt.attemptNumber);
+      await P.setDoc(P.doc(P.db,'examAttempts',attemptId),attempt);
       if(score>0){
         const userRef=P.doc(P.db,'users',P.auth.currentUser.uid);
         const beforeUser=await P.getDoc(userRef);

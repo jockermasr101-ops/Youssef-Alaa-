@@ -52,7 +52,7 @@ window.addEventListener('youssef-auth-ready', async (e) => {
       const s = await P.getDoc(P.doc(P.db,'lessons',requestedLessonId));
       if (s.exists()) lesson = { id:s.id, ...s.data() };
     } else if (courseId) {
-      const s = await P.getDocs(P.query(P.collection(P.db,'lessons'), P.where('courseId','==',courseId), P.limit(200)));
+      const s = await P.getDocs(P.query(P.collection(P.db,'lessons'), P.where('courseId','==',courseId), P.where('published','==',true), P.limit(200)));
       const rows = s.docs.map(d=>({id:d.id,...d.data()}))
         .filter(x=>x.published===true)
         .sort((a,b)=>Number(a.order||0)-Number(b.order||0));

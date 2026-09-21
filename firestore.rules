@@ -244,7 +244,7 @@ service cloud.firestore {
     }
 
     match /promoCodes/{codeId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.active == true);
+      allow read: if isAdmin() || (isTeacher() && resource.data.createdByUid == request.auth.uid) || (isStudent() && resource.data.active == true);
 
       allow create: if isAdmin() ||
         (isTeacher() &&
